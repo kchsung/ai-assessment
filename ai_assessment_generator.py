@@ -571,9 +571,13 @@ def main():
                             "id": f"Q_TPL_{ts}_{random.randint(1000, 9999)}",
                             "area": ASSESSMENT_AREAS[area],
                             "difficulty": DIFFICULTY_LEVELS[difficulty],
-                            "type": question_type,
-                            "question": f"{area} 영역의 {difficulty} 수준 문제입니다.",
+                            "type": QUESTION_TYPES[question_type],
+                            "question": f"{ASSESSMENT_AREAS[area]} 영역의 {DIFFICULTY_LEVELS[difficulty]} 수준 {QUESTION_TYPES[question_type]} 문제입니다.",
                             "ai_generated": False,
+                            "metadata": {
+                                "generated_at": ts,
+                                "template_based": True
+                            }
                         }
                     if q:
                         if st.session_state.db.save_question(q):
