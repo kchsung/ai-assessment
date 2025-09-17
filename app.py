@@ -2,11 +2,7 @@ import os
 import streamlit as st
 
 from src.config import get_secret
-try:
-    from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS, QUESTION_TYPES
-except ImportError as e:
-    st.error(f"Import error: {e}")
-    st.stop()
+from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS, QUESTION_TYPES
 from src.services.edge_client import EdgeDBClient
 from src.services.local_db import LocalDBClient
 from src.services.ai_generator import AIQuestionGenerator
