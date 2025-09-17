@@ -1,11 +1,4 @@
-# requirements.txt
-"""
-streamlit
-openai
-python-dotenv
-pandas
-datetime
-sqlite3
-plotly
-datetime
-"""
+streamlit==1.49.1
+openai>=1.40.0
+pandas>=2.2.2
+numpy>=1.26
