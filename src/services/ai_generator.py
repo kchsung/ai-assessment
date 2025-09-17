@@ -79,10 +79,18 @@ class AIQuestionGenerator:
     
     def _build_multiple_choice_prompt(self, area: str, difficulty: str, guide: str, time_limit: str, context: str):
         """객관식 문제 생성 프롬프트"""
+        # work_application과 daily_problem_solving의 경우 topic을 동적으로 설정
+        if area in ["work_application", "daily_problem_solving"]:
+            topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화' 등)"
+            area_display = f"{self.assessment_areas[area]} (구체적인 직무/상황으로 설정)"
+        else:
+            topic_instruction = f"topic 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
+            area_display = self.assessment_areas[area]
+        
         return f"""
 다음 조건에 맞는 AI 활용능력평가 객관식 문제를 생성해주세요:
 
-평가 영역: {self.assessment_areas[area]}
+평가 영역: {area_display}
 난이도: {self.difficulty_levels[difficulty]} - {guide}
 시간 제한: {time_limit}
 추가 맥락: {context if context else '없음'}
@@ -98,7 +106,7 @@ class AIQuestionGenerator:
   "lang": "kr",
   "category": "interview",
   "problemTitle": "문제 제목",
-  "topic": "{self.assessment_areas[area]}",
+  "topic": "{self.assessment_areas[area] if area not in ['work_application', 'daily_problem_solving'] else '구체적인 직무/상황'}",
   "difficulty": "{difficulty}",
   "estimatedTime": "{time_limit}",
   "scenario": "면접 시뮬레이션 배경 상황 설명",
@@ -124,14 +132,26 @@ class AIQuestionGenerator:
     }}
   ]
 }}
+
+중요: {topic_instruction}
 """
 
     def _build_subjective_prompt(self, area: str, difficulty: str, guide: str, time_limit: str, context: str):
         """주관식 문제 생성 프롬프트"""
+        # work_application과 daily_problem_solving의 경우 topic을 동적으로 설정
+        if area in ["work_application", "daily_problem_solving"]:
+            topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화' 등)"
+            area_display = f"{self.assessment_areas[area]} (구체적인 직무/상황으로 설정)"
+            task_template = "나는 현재 [구체적인 직무/상황] 면접에 참여하고 있다. 다음 상황에서..."
+        else:
+            topic_instruction = f"topic 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
+            area_display = self.assessment_areas[area]
+            task_template = f"나는 현재 {self.assessment_areas[area]} 면접에 참여하고 있다. 다음 상황에서..."
+        
         return f"""
 다음 조건에 맞는 AI 활용능력평가 주관식 문제를 생성해주세요:
 
-평가 영역: {self.assessment_areas[area]}
+평가 영역: {area_display}
 난이도: {self.difficulty_levels[difficulty]} - {guide}
 시간 제한: {time_limit}
 추가 맥락: {context if context else '없음'}
@@ -146,14 +166,14 @@ class AIQuestionGenerator:
 {{
   "lang": "kr",
   "category": "interview",
-  "topic": "{self.assessment_areas[area]}",
+  "topic": "{self.assessment_areas[area] if area not in ['work_application', 'daily_problem_solving'] else '구체적인 직무/상황'}",
   "difficulty": "{difficulty}",
   "time_limit": "{time_limit}",
   "topic_summary": "주제 요약 설명",
   "title": "문제 제목",
   "scenario": "면접 시뮬레이션 배경 + 출처",
   "goal": ["1단계: 첫 번째 목표", "2단계: 두 번째 목표"],
-  "task": "나는 현재 {self.assessment_areas[area]} 면접에 참여하고 있다. 다음 상황에서...",
+  "task": "{task_template}",
   "reference": {{
     "metrics": {{"key_metric": "핵심 지표 설명"}},
     "funnel": {{"stage": "단계별 데이터"}},
@@ -178,6 +198,8 @@ class AIQuestionGenerator:
     "명료성·형식 준수 20%"
   ]
 }}
+
+중요: {topic_instruction}
 """
 
     def generate_with_ai(self, area: str, difficulty: str, question_type: str, context: str = ""):
