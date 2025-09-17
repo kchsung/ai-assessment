@@ -22,7 +22,22 @@ class LocalDBClient:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             ai_generated BOOLEAN DEFAULT FALSE,
             template_id TEXT,
-            metadata TEXT
+            metadata TEXT,
+            -- 새로운 JSON 포맷 지원 필드들
+            lang TEXT DEFAULT 'kr',
+            category TEXT DEFAULT 'interview',
+            topic TEXT,
+            time_limit TEXT,
+            topic_summary TEXT,
+            scenario TEXT,
+            goal TEXT,
+            task TEXT,
+            reference TEXT,
+            first_question TEXT,
+            constraints TEXT,
+            guide TEXT,
+            evaluation TEXT,
+            steps TEXT
         )""")
         cur.execute("""
         CREATE TABLE IF NOT EXISTS feedback (
@@ -59,17 +74,56 @@ class LocalDBClient:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )""")
+        
+        # 기존 테이블에 새로운 컬럼들 추가 (마이그레이션)
+        self._migrate_schema(conn)
+        
         conn.commit(); conn.close()
+    
+    def _migrate_schema(self, conn):
+        """기존 테이블에 새로운 컬럼들을 안전하게 추가"""
+        cur = conn.cursor()
+        
+        # 새로운 컬럼들을 추가 (이미 존재하면 무시됨)
+        new_columns = [
+            ("lang", "TEXT DEFAULT 'kr'"),
+            ("category", "TEXT DEFAULT 'interview'"),
+            ("topic", "TEXT"),
+            ("time_limit", "TEXT"),
+            ("topic_summary", "TEXT"),
+            ("scenario", "TEXT"),
+            ("goal", "TEXT"),
+            ("task", "TEXT"),
+            ("reference", "TEXT"),
+            ("first_question", "TEXT"),
+            ("constraints", "TEXT"),
+            ("guide", "TEXT"),
+            ("evaluation", "TEXT"),
+            ("steps", "TEXT")
+        ]
+        
+        for column_name, column_def in new_columns:
+            try:
+                cur.execute(f"ALTER TABLE questions ADD COLUMN {column_name} {column_def}")
+            except sqlite3.OperationalError:
+                # 컬럼이 이미 존재하는 경우 무시
+                pass
 
     # API (Edge와 인터페이스 동일)
     def save_question(self, q: dict) -> bool:
         conn = sqlite3.connect(self.db_path); cur = conn.cursor()
+        
+        # 메타데이터에서 새로운 필드들 추출
+        metadata = q.get('metadata', {})
+        
         cur.execute("""
         INSERT INTO questions (
            id, area, difficulty, type, question_text,
            options, correct_answer, requirements, evaluation_criteria,
-           ai_generated, template_id, metadata
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""", (
+           ai_generated, template_id, metadata,
+           lang, category, topic, time_limit, topic_summary, scenario,
+           goal, task, reference, first_question, constraints, guide, evaluation, steps
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
             q['id'], q['area'], q['difficulty'], q.get('type','general'),
             q['question'], json.dumps(q.get('options', [])),
             q.get('correct_answer'),
@@ -77,7 +131,22 @@ class LocalDBClient:
             json.dumps(q.get('evaluation_criteria', [])),
             q.get('ai_generated', False),
             q.get('template_id'),
-            json.dumps(q.get('metadata', {})),
+            json.dumps(metadata),
+            # 새로운 필드들
+            metadata.get('lang', 'kr'),
+            metadata.get('category', 'interview'),
+            metadata.get('topic'),
+            metadata.get('time_limit') or metadata.get('estimatedTime'),
+            metadata.get('topic_summary'),
+            metadata.get('scenario'),
+            json.dumps(metadata.get('goal', [])),
+            metadata.get('task'),
+            json.dumps(metadata.get('reference', {})),
+            json.dumps(metadata.get('first_question', [])),
+            json.dumps(metadata.get('constraints', [])),
+            json.dumps(metadata.get('guide', {})),
+            json.dumps(metadata.get('evaluation', [])),
+            json.dumps(metadata.get('steps', []))
         ))
         conn.commit(); conn.close(); return True
 
@@ -92,6 +161,32 @@ class LocalDBClient:
         df = pd.read_sql_query(q, conn, params=params); conn.close()
         out = []
         for _, r in df.iterrows():
+            # 기본 메타데이터
+            metadata = json.loads(r["metadata"]) if r["metadata"] else {}
+            
+            # 새로운 필드들을 메타데이터에 병합
+            new_fields = {
+                "lang": r.get("lang", "kr"),
+                "category": r.get("category", "interview"),
+                "topic": r.get("topic"),
+                "time_limit": r.get("time_limit"),
+                "topic_summary": r.get("topic_summary"),
+                "scenario": r.get("scenario"),
+                "goal": json.loads(r["goal"]) if r.get("goal") else [],
+                "task": r.get("task"),
+                "reference": json.loads(r["reference"]) if r.get("reference") else {},
+                "first_question": json.loads(r["first_question"]) if r.get("first_question") else [],
+                "constraints": json.loads(r["constraints"]) if r.get("constraints") else [],
+                "guide": json.loads(r["guide"]) if r.get("guide") else {},
+                "evaluation": json.loads(r["evaluation"]) if r.get("evaluation") else [],
+                "steps": json.loads(r["steps"]) if r.get("steps") else []
+            }
+            
+            # None이 아닌 값들만 메타데이터에 추가
+            for key, value in new_fields.items():
+                if value is not None and value != "" and value != [] and value != {}:
+                    metadata[key] = value
+            
             out.append({
                 "id": r["id"], "area": r["area"], "difficulty": r["difficulty"], "type": r["type"],
                 "question": r["question_text"],
@@ -100,7 +195,7 @@ class LocalDBClient:
                 "requirements": json.loads(r["requirements"]) if r["requirements"] else None,
                 "evaluation_criteria": json.loads(r["evaluation_criteria"]) if r["evaluation_criteria"] else None,
                 "ai_generated": r["ai_generated"],
-                "metadata": json.loads(r["metadata"]) if r["metadata"] else {},
+                "metadata": metadata,
             })
         return out
 
