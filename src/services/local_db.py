@@ -212,6 +212,23 @@ class LocalDBClient:
         ))
         conn.commit(); conn.close(); return True
 
+    def get_feedback(self, question_id: str = None):
+        conn = sqlite3.connect(self.db_path)
+        if question_id:
+            df = pd.read_sql_query("""
+            SELECT question_id, user_id, difficulty_rating, relevance_rating,
+                   clarity_rating, comments, actual_difficulty, created_at
+            FROM feedback WHERE question_id = ?
+            ORDER BY created_at DESC""", conn, params=[question_id])
+        else:
+            df = pd.read_sql_query("""
+            SELECT question_id, user_id, difficulty_rating, relevance_rating,
+                   clarity_rating, comments, actual_difficulty, created_at
+            FROM feedback
+            ORDER BY created_at DESC""", conn)
+        conn.close()
+        return df.to_dict('records') if not df.empty else []
+
     def get_feedback_stats(self, question_id: str):
         conn = sqlite3.connect(self.db_path)
         df = pd.read_sql_query("""

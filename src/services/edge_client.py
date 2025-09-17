@@ -57,6 +57,8 @@ class EdgeDBClient:
             return self._local_fallback.save_question(params)
         elif action == "save_feedback":
             return self._local_fallback.save_feedback(params)
+        elif action == "get_feedback":
+            return self._local_fallback.get_feedback(params.get("question_id"))
         elif action == "get_feedback_stats":
             return self._local_fallback.get_feedback_stats(params.get("question_id"))
         elif action == "get_prompts":
@@ -102,6 +104,9 @@ class EdgeDBClient:
             "question_id": question_id, "new_difficulty": new_difficulty,
             "reason": reason, "adjusted_by": adjusted_by
         })
+
+    def get_feedback(self, question_id: str = None):
+        return self._call("get_feedback", {"question_id": question_id}) or []
 
     def count_feedback(self) -> int:
         return int(self._call("count_feedback") or 0)
