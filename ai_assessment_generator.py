@@ -17,7 +17,38 @@ import plotly.graph_objects as go
 from openai import OpenAI
 
 # ===== 환경 변수 로드 =====
-load_dotenv()
+
+# 1) 로컬 개발 환경일 수 있으니 .env를 "가능하면" 읽어둡니다.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=False)   # 이미 설정된 환경변수는 덮어쓰지 않음
+except Exception:
+    pass  # 클라우드나 미설치 환경에서도 문제없이 통과
+
+def get_secret(name: str, default=None) -> str:
+    """
+    우선순위:
+    1) Streamlit Cloud Secrets (st.secrets)
+    2) 환경변수 (os.environ)
+    3) 기본값(default) or 에러
+    """
+    # 1) Streamlit Secrets
+    try:
+        if name in st.secrets:
+            return st.secrets[name]
+    except Exception:
+        pass
+
+    # 2) OS 환경변수 (로컬 .env 로드 포함)
+    val = os.getenv(name)
+    if val is not None and val != "":
+        return val
+
+    # 3) Default or Error
+    if default is not None:
+        return default
+    raise RuntimeError(f"Missing required secret: {name}")
+
 
 # ===== OpenAI 설정 (키 하드코딩 금지) =====
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
