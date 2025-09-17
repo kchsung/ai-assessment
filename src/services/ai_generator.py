@@ -54,8 +54,8 @@ class AIQuestionGenerator:
 
     def _build_user_prompt(self, area: str, difficulty: str, question_type: str, context: str = ""):
         """기본 user 프롬프트 구성 - 새로운 JSON 포맷 지원"""
-        guide = self.default_difficulty_guides.get(difficulty, "적절한 난이도의 문제")
-        time_limit = self.difficulty_time_mapping.get(difficulty, "5분 이내")
+        guide = self.default_difficulty_guides[difficulty]
+        time_limit = self.difficulty_time_mapping[difficulty]
         
         if question_type == "multiple_choice":
             return self._build_multiple_choice_prompt(area, difficulty, guide, time_limit, context)
