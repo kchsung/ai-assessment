@@ -182,13 +182,9 @@ def render(st):
                             if step.get('options'):
                                 st.markdown("**선택지:**")
                                 for opt in step['options']:
-                                    col_a, col_b = st.columns([1, 4])
-                                    with col_a:
-                                        st.markdown(f"**{opt['id']}**")
-                                    with col_b:
-                                        st.markdown(opt['text'])
-                                        if opt.get('feedback'):
-                                            st.caption(f"💡 {opt['feedback']}")
+                                    st.markdown(f"• {opt['text']}")
+                                    if opt.get('feedback'):
+                                        st.caption(f"💡 {opt['feedback']}")
                             
                             # 정답 표시
                             if step.get('answer'):
@@ -204,13 +200,9 @@ def render(st):
                     if step.get('options'):
                         st.markdown("**선택지:**")
                         for opt in step['options']:
-                            col_a, col_b = st.columns([1, 4])
-                            with col_a:
-                                st.markdown(f"**{opt['id']}**")
-                            with col_b:
-                                st.markdown(opt['text'])
-                                if opt.get('feedback'):
-                                    st.caption(f"💡 {opt['feedback']}")
+                            st.markdown(f"• {opt['text']}")
+                            if opt.get('feedback'):
+                                st.caption(f"💡 {opt['feedback']}")
                     
                     # 정답 표시
                     if step.get('answer'):
@@ -231,43 +223,18 @@ def render(st):
                     st.markdown("**🎯 목표**")
                     for goal in meta["goal"]:
                         st.markdown(f"- {goal}")
-                
-                # 과제 표시
-                if meta.get("task"):
-                    st.markdown("**📋 과제**")
-                    st.markdown(meta["task"])
-                
-                # 첫 번째 질문들
-                if meta.get("first_question"):
-                    st.markdown("**❓ 질문**")
-                    for question in meta["first_question"]:
-                        st.markdown(f"- {question}")
-                
-                # 요구사항
-                if meta.get("requirements"):
-                    st.markdown("**📌 요구사항**")
-                    for req in meta["requirements"]:
-                        st.markdown(f"- {req}")
-                
-                # 제약사항
-                if meta.get("constraints"):
-                    st.markdown("**⚠️ 제약사항**")
-                    for constraint in meta["constraints"]:
-                        st.markdown(f"- {constraint}")
-                
-                # 평가 기준
-                if meta.get("evaluation"):
-                    st.markdown("**📊 평가 기준**")
-                    for eval_criteria in meta["evaluation"]:
-                        st.markdown(f"- {eval_criteria}")
             
             # 기존 방식으로 fallback
             else:
                 st.markdown("### 문제")
                 st.markdown(selected_q.get("question","(없음)"))
                 if meta.get("scenario"):
-                    st.markdown("### 상황 설명")
+                    st.markdown("**📖 문제 상황**")
                     st.markdown(meta["scenario"])
+                if meta.get("goal"):
+                    st.markdown("**🎯 목표**")
+                    for goal in meta["goal"]:
+                        st.markdown(f"- {goal}")
             
             # 피드백 버튼 (우측에 배치)
             st.markdown("---")
