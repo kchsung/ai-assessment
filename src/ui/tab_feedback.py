@@ -1,8 +1,20 @@
 import streamlit as st
 from src.constants import DIFFICULTY_LEVELS
+from src.config import get_secret
+import openai
+import json
 
 def render(st):
-    st.header("💬 피드백 & Human-in-the-Loop")
+    # 헤더와 AI 검토 버튼을 같은 라인에 배치
+    col_header, col_ai = st.columns([3, 1])
+    
+    with col_header:
+        st.header("💬 피드백 & Human-in-the-Loop")
+    
+    with col_ai:
+        st.markdown("<br>", unsafe_allow_html=True)  # 공간 맞춤
+        if st.button("🤖 AI로 난이도 검토", use_container_width=True, type="secondary"):
+            st.session_state.show_ai_review = True
 
     # 문제 선택 (통합된 인터페이스)
     all_q = st.session_state.db.get_questions()
@@ -63,6 +75,7 @@ def render(st):
                 if submitted:
                     if comments.strip():  # 텍스트 입력이 있는 경우에만 저장
                         ok = st.session_state.db.save_feedback({
+                            
                             "question_id": selected_id, 
                             "difficulty_rating": d,
                             "relevance_rating": r, 
@@ -107,30 +120,130 @@ def render(st):
             else:
                 st.info("이 문제에 대한 피드백이 아직 없습니다. 왼쪽에서 첫 번째 피드백을 작성해보세요!")
         
-        # 난이도 조정 섹션 (하단에 배치)
-        st.markdown("---")
-        st.subheader("🔧 난이도 자동/수동 조정")
-        
-        col_adj1, col_adj2 = st.columns(2)
-        
-        with col_adj1:
-            if st.button("🔄 전체 자동 분석"):
-                with st.spinner("분석 중..."):
-                    adjs = st.session_state.hitl.auto_adjust_difficulties()
-                    if adjs:
-                        st.success(f"{len(adjs)}건 조정")
-                        for a in adjs:
-                            st.write(f"- {a['question_id']}: {a['from']} → {a['to']} ({a['reason']})")
-                    else:
-                        st.info("조정 필요 없음")
-
-        with col_adj2:
-            a = st.session_state.hitl.analyze_difficulty_alignment(selected_id)
-            if a.get("status")=="analyzed":
-                st.info(f"현재: {a['current_difficulty']} / 권장: {a['recommended_difficulty']}")
-                new_d = st.selectbox("새 난이도", options=list(DIFFICULTY_LEVELS.values()))
-                reason = st.text_input("조정 사유")
-                if st.button("난이도 조정"):
-                    st.session_state.db.adjust_difficulty(selected_id, new_d, reason, "manual_admin")
-                    st.success("조정 완료")
+    # AI 검토 모달
+    if st.session_state.get("show_ai_review"):
+        if not selected_display:
+            st.warning("⚠️ 먼저 검토할 문제를 선택해주세요.")
+            st.session_state.show_ai_review = False
+        else:
+            # AI 검토 실행
+            with st.spinner("🤖 AI가 문제를 검토하고 있습니다..."):
+                ai_review = perform_ai_review(selected_question)
+            
+            # 검토 결과 모달 표시
+            with st.container():
+                st.markdown("---")
+                st.markdown("### 🤖 AI 난이도 검토 결과")
+                
+                # 닫기 버튼
+                if st.button("❌ 닫기", key="close_ai_review"):
+                    st.session_state.show_ai_review = False
                     st.rerun()
+                
+                # 검토 결과 표시
+                st.markdown(ai_review)
+                
+                st.markdown("---")
+
+def perform_ai_review(question):
+    """AI를 사용하여 문제를 검토하는 함수"""
+    try:
+        # OpenAI 클라이언트 초기화
+        api_key = get_secret("OPENAI_API_KEY")
+        if not api_key:
+            return "❌ OpenAI API 키가 설정되지 않았습니다."
+        
+        client = openai.OpenAI(api_key=api_key)
+        
+        # 문제 정보 수집
+        question_text = question.get("question") or question.get("question_text", "")
+        meta = question.get("metadata", {})
+        
+        # 문제 내용 구성
+        problem_content = f"""
+**문제 ID**: {question.get('id', 'N/A')}
+**평가 영역**: {question.get('area', 'N/A')}
+**현재 난이도**: {question.get('difficulty', 'N/A')}
+**문제 유형**: {question.get('type', 'N/A')}
+
+**문제 내용**:
+{question_text}
+
+"""
+        
+        # 객관식 문제인 경우 선택지 추가
+        if question.get("type") == "multiple_choice" and meta.get("steps"):
+            problem_content += "**선택지**:\n"
+            for step in meta["steps"]:
+                if step.get("options"):
+                    for opt in step["options"]:
+                        problem_content += f"- {opt.get('id', '')}: {opt.get('text', '')}\n"
+        
+        # 주관식 문제인 경우 추가 정보
+        elif question.get("type") == "subjective":
+            if meta.get("scenario"):
+                problem_content += f"**시나리오**: {meta['scenario']}\n"
+            if meta.get("goal"):
+                problem_content += f"**목표**: {', '.join(meta['goal'])}\n"
+            if meta.get("task"):
+                problem_content += f"**과제**: {meta['task']}\n"
+        
+        # AI 검토 프롬프트를 DB에서 가져오기
+        try:
+            # Supabase에서 프롬프트 조회
+            system_prompt = st.session_state.db.get_prompt_by_id("d98893e6-db7b-47f4-8f66-1a33e326a5be")
+            if not system_prompt:
+                # DB에서 가져오지 못한 경우 기본 프롬프트 사용
+                system_prompt = """[ROLE LOCK — 반드시 준수]
+너는 "QLEARN 문제 평가 전문가"다.  
+출제된 문제를 바탕으로 아래 세 가지 항목을 반드시 평가하고, 실제 사람이 의견을 말하는 것처럼 구체적으로 코멘트해라.  
+
+───────────────────────────────
+
+## 1. 난이도 평가 (Difficulty)
+- 문제를 푸는 데 필요한 사고 수준을 판단하라.  
+- 범위: "아주 쉬움 | 쉬움 | 보통 | 어려움 | 아주 어려움"  
+- 왜 그렇게 평가했는지, 학습자 입장에서 어떤 점이 쉽거나 어려운지 근거를 제시하라.  
+
+## 2. 관련성 평가 (Relevance)
+- 문제가 실제 직무/맥락/시나리오와 얼마나 밀접하게 연결되는지 판단하라.  
+- "높음 | 보통 | 낮음" 중 하나로 표시하고, 그 이유를 설명하라.  
+- 불필요한 지식만 묻는 문제인지, 실제 상황에서 활용 가능한지 구분해라.  
+
+## 3. 명확성 평가 (Clarity)
+- 문제와 보기(선택지)가 혼동 없이 잘 이해되는지 평가하라.  
+- "명확함 | 보통 | 모호함"으로 표시하고, 불명확하거나 애매한 부분이 있다면 지적하라.  
+
+───────────────────────────────
+
+## 4. 종합 의견 (Human-like Feedback)
+- 마치 실제 사람이 동료에게 조언하듯 구체적으로 말하라.  
+- 정답자의 관점(왜 이게 좋은 문제인가)과 오답자의 관점(왜 헷갈릴 수 있는가)을 모두 포함하라.  
+- 학습자 입장에서 이 문제가 주는 학습 포인트나 개선 방향을 간단히 정리하라.  
+
+───────────────────────────────
+
+[출력 형식]
+- 난이도 평가: (등급 + 근거)  
+- 관련성 평가: (등급 + 근거)  
+- 명확성 평가: (등급 + 근거)  
+- 종합 의견: (자연스러운 문단 형식, 실제 사람의 심사평처럼 작성)"""
+        except Exception as e:
+            st.error(f"프롬프트 조회 실패: {e}")
+            return f"❌ 프롬프트 조회 중 오류가 발생했습니다: {str(e)}"
+        
+        user_prompt = f"다음 문제를 검토해주세요:\n\n{problem_content}"
+        
+        # AI 호출
+        response = client.chat.completions.create(
+            model=st.session_state.get("selected_model", "gpt-5-nano"),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        return f"❌ AI 검토 중 오류가 발생했습니다: {str(e)}"

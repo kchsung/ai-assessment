@@ -4,7 +4,6 @@ import streamlit as st
 from src.config import get_secret
 from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS, QUESTION_TYPES
 from src.services.edge_client import EdgeDBClient
-from src.services.local_db import LocalDBClient
 from src.services.ai_generator import AIQuestionGenerator
 from src.services.hitl import HITLManager
 
@@ -20,23 +19,20 @@ st.set_page_config(page_title="AI 활용능력평가 에이전트 v2.0", page_ic
 # --- 세션 초기화 ---
 def init_state():
     if "db" not in st.session_state:
-        # Edge 우선, 실패 시 Local fallback
-        try:
-            edge_url = get_secret("EDGE_FUNCTION_URL") or os.getenv("EDGE_FUNCTION_URL")
-            edge_token = get_secret("EDGE_SHARED_TOKEN") or os.getenv("EDGE_SHARED_TOKEN")
-            supabase_key = get_secret("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
-            
-            if edge_url and edge_token:
-                st.session_state.db = EdgeDBClient(
-                    base_url=edge_url,
-                    token=edge_token,
-                    supabase_anon=supabase_key,
-                )
-            else:
-                raise Exception("Edge Function 설정이 없습니다")
-        except Exception as e:
-            # Edge 실패 시 Local DB 사용
-            st.session_state.db = LocalDBClient()
+        # Edge Function만 사용
+        edge_url = get_secret("EDGE_FUNCTION_URL") or os.getenv("EDGE_FUNCTION_URL")
+        edge_token = get_secret("EDGE_SHARED_TOKEN") or os.getenv("EDGE_SHARED_TOKEN")
+        supabase_key = get_secret("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
+        
+        if not edge_url or not edge_token:
+            raise RuntimeError("Edge Function 설정이 없습니다. EDGE_FUNCTION_URL과 EDGE_SHARED_TOKEN을 설정하세요.")
+        
+        st.session_state.db = EdgeDBClient(
+            base_url=edge_url,
+            token=edge_token,
+            supabase_anon=supabase_key,
+        )
+        print("✅ Edge Function 초기화 완료")
 
     if "generator" not in st.session_state:
         try:
