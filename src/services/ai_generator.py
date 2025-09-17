@@ -27,6 +27,15 @@ class AIQuestionGenerator:
             "hard": "전략적 사고와 시스템 설계 능력을 평가. 비즈니스 임팩트를 고려한 종합적 문제.",
             "very_hard": "혁신적 사고와 복잡한 시스템 통합 능력을 평가. 창의적 해결책이 필요한 고도화된 문제.",
         }
+        
+        # 난이도별 시간 제한 매핑
+        self.difficulty_time_mapping = {
+            "very_easy": "3분 이내",
+            "easy": "4분 이내", 
+            "medium": "5분 이내",
+            "hard": "7분 이내",
+            "very_hard": "10분 이내"
+        }
 
     def _get_prompts_from_db(self, area: str, difficulty: str, question_type: str):
         """데이터베이스에서 프롬프트 조회"""
@@ -59,33 +68,115 @@ class AIQuestionGenerator:
             return None, None
 
     def _build_user_prompt(self, area: str, difficulty: str, question_type: str, context: str = ""):
-        """기본 user 프롬프트 구성"""
+        """기본 user 프롬프트 구성 - 새로운 JSON 포맷 지원"""
         guide = self.default_difficulty_guides.get(difficulty, "적절한 난이도의 문제")
+        time_limit = self.difficulty_time_mapping.get(difficulty, "5분 이내")
         
+        if question_type == "multiple_choice":
+            return self._build_multiple_choice_prompt(area, difficulty, guide, time_limit, context)
+        else:  # subjective
+            return self._build_subjective_prompt(area, difficulty, guide, time_limit, context)
+    
+    def _build_multiple_choice_prompt(self, area: str, difficulty: str, guide: str, time_limit: str, context: str):
+        """객관식 문제 생성 프롬프트"""
         return f"""
-다음 조건에 맞는 AI 활용능력평가 문제를 생성해주세요:
+다음 조건에 맞는 AI 활용능력평가 객관식 문제를 생성해주세요:
 
 평가 영역: {self.assessment_areas[area]}
 난이도: {self.difficulty_levels[difficulty]} - {guide}
-문제 유형: {question_type}
+시간 제한: {time_limit}
 추가 맥락: {context if context else '없음'}
 
 요구사항:
 1. 실무 상황을 반영한 현실적인 문제
 2. AI를 도구로 활용하는 능력을 평가
-3. 단순 암기가 아닌 응용력 평가
+3. 단계별 접근이 필요한 문제
 4. {difficulty} 수준에 맞는 복잡도
 
-다음 형식으로 응답해주세요:
+다음 JSON 형식으로 응답해주세요:
 {{
-    "question": "문제 내용",
-    "scenario": "상황 설명 (있는 경우)",
-    "options": ["선택지1", "선택지2", "선택지3", "선택지4"],
-    "correct_answer": 1,
-    "requirements": ["요구사항1", "요구사항2"],
-    "evaluation_criteria": ["평가기준1 (배점)", "평가기준2 (배점)"],
-    "sample_solution": "모범 답안 또는 해결 방향",
-    "key_points": ["핵심 평가 포인트1", "핵심 평가 포인트2"]
+  "lang": "kr",
+  "category": "interview",
+  "problemTitle": "문제 제목",
+  "topic": "{self.assessment_areas[area]}",
+  "difficulty": "{difficulty}",
+  "estimatedTime": "{time_limit}",
+  "scenario": "면접 시뮬레이션 배경 상황 설명",
+  "reference": {{
+    "metrics": {{"paid_conv_rate": "유료 전환율 2.3%", "retention_d7": "7일 리텐션 45%"}},
+    "funnel": {{"signup": "회원가입 단계별 데이터"}},
+    "user_feedback": [{{"tag": "사용자 피드백 태그", "content": "피드백 내용"}}],
+    "competitor_strategy": {{"campaign": {{"A": "경쟁사 A 전략", "B": "경쟁사 B 전략"}}}}
+  }},
+  "steps": [
+    {{
+      "step": 1,
+      "title": "맥락 파악",
+      "question": "핵심 질문 내용",
+      "ref_paths": ["ref.metrics.paid_conv_rate"],
+      "options": [
+        {{"id":"A","text":"선택지 A","feedback":"피드백 A","weight":0.85,"ref_paths":["ref.funnel.signup"]}},
+        {{"id":"B","text":"선택지 B","feedback":"피드백 B","weight":0.75,"ref_paths":["ref.user_feedback[0].tag"]}},
+        {{"id":"C","text":"선택지 C","feedback":"피드백 C","weight":1.0,"ref_paths":["ref.metrics.retention_d7"]}},
+        {{"id":"D","text":"선택지 D","feedback":"피드백 D","weight":0.65,"ref_paths":["ref.competitor_strategy.campaign.B"]}}
+      ],
+      "answer":"C"
+    }}
+  ]
+}}
+"""
+
+    def _build_subjective_prompt(self, area: str, difficulty: str, guide: str, time_limit: str, context: str):
+        """주관식 문제 생성 프롬프트"""
+        return f"""
+다음 조건에 맞는 AI 활용능력평가 주관식 문제를 생성해주세요:
+
+평가 영역: {self.assessment_areas[area]}
+난이도: {self.difficulty_levels[difficulty]} - {guide}
+시간 제한: {time_limit}
+추가 맥락: {context if context else '없음'}
+
+요구사항:
+1. 실무 상황을 반영한 현실적인 문제
+2. AI를 도구로 활용하는 능력을 평가
+3. 창의적 사고와 종합적 문제 해결 능력 평가
+4. {difficulty} 수준에 맞는 복잡도
+
+다음 JSON 형식으로 응답해주세요:
+{{
+  "lang": "kr",
+  "category": "interview",
+  "topic": "{self.assessment_areas[area]}",
+  "difficulty": "{difficulty}",
+  "time_limit": "{time_limit}",
+  "topic_summary": "주제 요약 설명",
+  "title": "문제 제목",
+  "scenario": "면접 시뮬레이션 배경 + 출처",
+  "goal": ["1단계: 첫 번째 목표", "2단계: 두 번째 목표"],
+  "task": "나는 현재 {self.assessment_areas[area]} 면접에 참여하고 있다. 다음 상황에서...",
+  "reference": {{
+    "metrics": {{"key_metric": "핵심 지표 설명"}},
+    "funnel": {{"stage": "단계별 데이터"}},
+    "user_feedback": [{{"type": "피드백 유형", "content": "피드백 내용"}}],
+    "competitor_strategy": {{"approach": "경쟁사 접근법"}}
+  }},
+  "first_question": ["첫 번째 질문", "두 번째 질문", "세 번째 질문"],
+  "requirements": ["요구사항 1", "요구사항 2"],
+  "constraints": ["개인정보 포함 금지", "금칙어 사용 금지"],
+  "guide": {{
+    "method": "Search–Compare–Choose–Verify",
+    "alternatives": [
+      "Rapid Research & Snapshot",
+      "Iterative Q-A Refinement", 
+      "Decompose-Solve-Recombine"
+    ]
+  }},
+  "evaluation": [
+    "목표 적합성·정확성 30%",
+    "근거·출처 신뢰도 25%",
+    "실행 가능성·구체성 25%",
+    "명료성·형식 준수 20%"
+  ]
 }}
 """
 
@@ -114,26 +205,57 @@ class AIQuestionGenerator:
             )
             content = resp.choices[0].message.content
             m = re.search(r"\{[\s\S]*\}", content or "")
-            qdata = json.loads(m.group()) if m else {"question": content or ""}
+            qdata = json.loads(m.group()) if m else {"title": content or ""}
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            q = {
-                "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
-                "area": ASSESSMENT_AREAS[area],
-                "difficulty": DIFFICULTY_LEVELS[difficulty],
-                "type": question_type,
-                "question": qdata.get("question",""),
-                "ai_generated": True,
-                "metadata": {
-                    "generated_at": ts,
-                    "model": model,
-                    "scenario": qdata.get("scenario",""),
-                    "sample_solution": qdata.get("sample_solution"),
-                    "key_points": qdata.get("key_points"),
-                },
-            }
-            if qdata.get("options"): q["options"]=qdata["options"]; q["correct_answer"]=qdata.get("correct_answer")
-            if qdata.get("requirements"): q["requirements"]=qdata["requirements"]
-            if qdata.get("evaluation_criteria"): q["evaluation_criteria"]=qdata["evaluation_criteria"]
+            
+            # 새로운 JSON 포맷에 맞게 데이터 구조 변환
+            if question_type == "multiple_choice":
+                q = {
+                    "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
+                    "area": ASSESSMENT_AREAS[area],
+                    "difficulty": DIFFICULTY_LEVELS[difficulty],
+                    "type": question_type,
+                    "question": qdata.get("problemTitle", ""),
+                    "ai_generated": True,
+                    "metadata": {
+                        "generated_at": ts,
+                        "model": model,
+                        "lang": qdata.get("lang", "kr"),
+                        "category": qdata.get("category", "interview"),
+                        "topic": qdata.get("topic", ""),
+                        "estimatedTime": qdata.get("estimatedTime", ""),
+                        "scenario": qdata.get("scenario", ""),
+                        "reference": qdata.get("reference", {}),
+                        "steps": qdata.get("steps", [])
+                    },
+                }
+            else:  # subjective
+                q = {
+                    "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
+                    "area": ASSESSMENT_AREAS[area],
+                    "difficulty": DIFFICULTY_LEVELS[difficulty],
+                    "type": question_type,
+                    "question": qdata.get("title", ""),
+                    "ai_generated": True,
+                    "metadata": {
+                        "generated_at": ts,
+                        "model": model,
+                        "lang": qdata.get("lang", "kr"),
+                        "category": qdata.get("category", "interview"),
+                        "topic": qdata.get("topic", ""),
+                        "time_limit": qdata.get("time_limit", ""),
+                        "topic_summary": qdata.get("topic_summary", ""),
+                        "scenario": qdata.get("scenario", ""),
+                        "goal": qdata.get("goal", []),
+                        "task": qdata.get("task", ""),
+                        "reference": qdata.get("reference", {}),
+                        "first_question": qdata.get("first_question", []),
+                        "requirements": qdata.get("requirements", []),
+                        "constraints": qdata.get("constraints", []),
+                        "guide": qdata.get("guide", {}),
+                        "evaluation": qdata.get("evaluation", [])
+                    },
+                }
             st.session_state.last_raw_content = content
             return q
         except Exception as e:

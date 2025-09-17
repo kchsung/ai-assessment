@@ -17,7 +17,5 @@ DIFFICULTY_LEVELS = {
 
 QUESTION_TYPES = {
     "multiple_choice": "객관식",
-    "scenario": "시나리오 기반",
-    "practical": "실습형",
-    "project": "프로젝트형",
+    "subjective": "주관식",
 }
