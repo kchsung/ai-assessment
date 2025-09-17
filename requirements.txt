@@ -2,3 +2,6 @@ streamlit==1.49.1
 openai>=1.40.0
 pandas>=2.2.2
 numpy>=1.26
+plotly>=5.23
+python-dotenv>=1.0.0
+requests>=2.31
