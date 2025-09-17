@@ -15,7 +15,7 @@ def render(st):
         f_type = st.selectbox("유형", ["전체"] + list(QUESTION_TYPES.keys()), 
                              format_func=lambda v: "전체" if v=="전체" else QUESTION_TYPES[v])
     with c4:
-        search_text = st.text_input("검색어", placeholder="문제 내용으로 검색...", key="search_text")
+        search_text = st.text_input("검색어", placeholder="문제 내용으로 검색...", key="question_search_input")
     with c5:
         st.markdown("<br>", unsafe_allow_html=True)  # 공간 추가
         if st.button("🔍 검색", use_container_width=True):
@@ -40,7 +40,6 @@ def render(st):
             
             st.session_state.filtered_questions = questions
             st.session_state.current_filters = filters
-            st.session_state.search_text = search_text.strip()
             st.session_state.current_page = 1  # 검색 시 첫 페이지로 리셋
             st.session_state.selected_question_id = None  # 검색 시 선택 초기화
             st.rerun()
