@@ -43,8 +43,9 @@ class EdgeDBClient:
                 raise RuntimeError(f"Edge failure: {data.get('error')}")
             return data.get("data")
         except Exception as e:
-            # Edge Function 실패 시 fallback 모드로 전환
-            print(f"Edge Function 실패, LocalDB로 fallback: {e}")
+            # Edge Function 실패 시 fallback 모드로 전환 (조용히 처리)
+            if not self._use_fallback:  # 첫 번째 실패만 로그 출력
+                print(f"Edge Function 사용 불가, LocalDB 사용 중...")
             self._use_fallback = True
             return self._local_call(action, params)
     

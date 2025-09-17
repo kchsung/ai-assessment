@@ -46,9 +46,14 @@ def render(st):
         from src.config import is_streamlit_cloud, get_secret
         api_key = get_secret("OPENAI_API_KEY")
         
+        # 데이터베이스 상태 확인
+        db = st.session_state.get("db")
+        db_type = "LocalDB" if db and "LocalDBClient" in str(type(db)) else "EdgeDB"
+        
         config_info = {
             "selected_model": st.session_state.get("selected_model", "gpt-5-nano"),
             "api_configured": "✅ 설정됨" if st.session_state.get("generator") else "❌ 미설정",
+            "database": f"✅ {db_type} 사용 중",
             "environment": "☁️ Streamlit Cloud" if is_streamlit_cloud() else "💻 로컬",
             "api_key_source": "🔐 secrets" if api_key and "sk-proj-" in str(api_key) else "❌ 없음"
         }

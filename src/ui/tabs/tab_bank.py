@@ -25,6 +25,28 @@ def render(st):
             with st.expander(f"{idx+1}. [{q['difficulty']}] {q['area']} - {q['id'][:15]}..."):
                 question_text = q.get("question") or q.get("question_text","(없음)")
                 st.markdown(f"**문제**: {question_text[:200]}...")
+                
+                # 문제 유형에 따른 미리보기
+                meta = q.get("metadata", {})
+                if q.get("type") == "multiple_choice" and meta.get("steps"):
+                    st.markdown("**📋 객관식 문제**")
+                    steps = meta["steps"]
+                    if steps:
+                        step = steps[0]  # 첫 번째 스텝만 미리보기
+                        if step.get('options'):
+                            st.markdown("**선택지 미리보기:**")
+                            for opt in step['options'][:2]:  # 처음 2개만 표시
+                                st.markdown(f"- {opt['id']}: {opt['text'][:50]}...")
+                            if len(step['options']) > 2:
+                                st.caption(f"... 외 {len(step['options'])-2}개 선택지")
+                
+                elif q.get("type") == "subjective":
+                    st.markdown("**📝 주관식 문제**")
+                    if meta.get("scenario"):
+                        st.markdown(f"**상황**: {meta['scenario'][:100]}...")
+                    if meta.get("goal"):
+                        st.markdown(f"**목표**: {meta['goal'][0][:50]}...")
+                
                 stats = st.session_state.db.get_feedback_stats(q["id"])
                 if stats:
                     st.markdown(

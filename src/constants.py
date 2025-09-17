@@ -1,6 +1,6 @@
 # 사용자 표시용 (한국어)
 ASSESSMENT_AREAS_DISPLAY = {
-    "ai_basics": "AI 기초 이해도",
+    "ai_basics": "AI 기초 이해",
     "prompt_engineering": "프롬프트 엔지니어링",
     "work_application": "면접 문제",
     "daily_problem_solving": "일상 문제",

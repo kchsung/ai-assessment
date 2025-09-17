@@ -36,22 +36,114 @@ def render(st):
         q = st.session_state.get("last_generated")
         if q:
             st.info(f"**문제 ID**: {q['id']}  \n**평가 영역**: {q['area']}  \n**난이도**: {q['difficulty']}  \n**유형**: {q['type']}")
-            st.markdown("### 문제")
-            st.markdown(q.get("question","(없음)"))
+            
             meta = q.get("metadata", {})
-            if meta.get("scenario"):
-                st.markdown("### 상황 설명"); st.markdown(meta["scenario"])
-            if q.get("options"):
-                st.markdown("### 선택지")
-                for i, opt in enumerate(q["options"], 1):
-                    st.markdown(f"{i}. {opt}")
-                if q.get("correct_answer"):
-                    with st.expander("정답 확인"):
-                        st.success(f"정답: {q['correct_answer']}번")
-            if q.get("requirements"):
-                st.markdown("### 요구사항"); [st.markdown(f"- {r}") for r in q["requirements"]]
-            if q.get("evaluation_criteria"):
-                st.markdown("### 평가 기준"); [st.markdown(f"- {c}") for c in q["evaluation_criteria"]]
+            
+            # 객관식 문제 표시
+            if q.get("type") == "multiple_choice" and meta.get("steps"):
+                st.markdown("### 📋 객관식 문제")
+                steps = meta["steps"]
+                
+                # 스텝별 탭으로 표시
+                if len(steps) > 1:
+                    step_tabs = st.tabs([f"Step {step['step']}" for step in steps])
+                    for i, step in enumerate(steps):
+                        with step_tabs[i]:
+                            st.markdown(f"**{step.get('title', '문제')}**")
+                            st.markdown(step.get('question', ''))
+                            
+                            # 선택지 표시
+                            if step.get('options'):
+                                st.markdown("**선택지:**")
+                                for opt in step['options']:
+                                    col_a, col_b = st.columns([1, 4])
+                                    with col_a:
+                                        st.markdown(f"**{opt['id']}**")
+                                    with col_b:
+                                        st.markdown(opt['text'])
+                                        if opt.get('feedback'):
+                                            st.caption(f"💡 {opt['feedback']}")
+                            
+                            # 정답 표시
+                            if step.get('answer'):
+                                with st.expander("정답 확인"):
+                                    st.success(f"정답: {step['answer']}")
+                else:
+                    # 단일 스텝인 경우
+                    step = steps[0]
+                    st.markdown(f"**{step.get('title', '문제')}**")
+                    st.markdown(step.get('question', ''))
+                    
+                    # 선택지 표시
+                    if step.get('options'):
+                        st.markdown("**선택지:**")
+                        for opt in step['options']:
+                            col_a, col_b = st.columns([1, 4])
+                            with col_a:
+                                st.markdown(f"**{opt['id']}**")
+                            with col_b:
+                                st.markdown(opt['text'])
+                                if opt.get('feedback'):
+                                    st.caption(f"💡 {opt['feedback']}")
+                    
+                    # 정답 표시
+                    if step.get('answer'):
+                        with st.expander("정답 확인"):
+                            st.success(f"정답: {step['answer']}")
+            
+            # 주관식 문제 표시
+            elif q.get("type") == "subjective":
+                st.markdown("### 📝 주관식 문제")
+                
+                # 시나리오를 마크다운으로 표시
+                if meta.get("scenario"):
+                    st.markdown("**📖 문제 상황**")
+                    st.markdown(meta["scenario"])
+                
+                # 목표 표시
+                if meta.get("goal"):
+                    st.markdown("**🎯 목표**")
+                    for goal in meta["goal"]:
+                        st.markdown(f"- {goal}")
+                
+                # 과제 표시
+                if meta.get("task"):
+                    st.markdown("**📋 과제**")
+                    st.markdown(meta["task"])
+                
+                # 첫 번째 질문들
+                if meta.get("first_question"):
+                    st.markdown("**❓ 질문**")
+                    for question in meta["first_question"]:
+                        st.markdown(f"- {question}")
+                
+                # 요구사항
+                if meta.get("requirements"):
+                    st.markdown("**📌 요구사항**")
+                    for req in meta["requirements"]:
+                        st.markdown(f"- {req}")
+                
+                # 제약사항
+                if meta.get("constraints"):
+                    st.markdown("**⚠️ 제약사항**")
+                    for constraint in meta["constraints"]:
+                        st.markdown(f"- {constraint}")
+                
+                # 평가 기준
+                if meta.get("evaluation"):
+                    st.markdown("**📊 평가 기준**")
+                    for eval_criteria in meta["evaluation"]:
+                        st.markdown(f"- {eval_criteria}")
+            
+            # 기존 방식으로 fallback (새로운 구조가 아닌 경우)
+            else:
+                st.markdown("### 문제")
+                st.markdown(q.get("question","(없음)"))
+                if meta.get("scenario"):
+                    st.markdown("### 상황 설명")
+                    st.markdown(meta["scenario"])
+            
+            # 디버깅용 원문 표시
             if q.get("ai_generated") and st.session_state.get("last_raw_content"):
                 with st.expander("원문 모델 응답 (디버깅)"):
                     st.code(st.session_state.last_raw_content)
