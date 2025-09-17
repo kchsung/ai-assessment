@@ -1,11 +1,11 @@
 import streamlit as st
-from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS, QUESTION_TYPES
+from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS, QUESTION_TYPES
 
 def render(st):
     st.header("📚 문제 은행")
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        f_area = st.selectbox("평가 영역", ["전체"] + list(ASSESSMENT_AREAS.keys()), format_func=lambda v: "전체" if v=="전체" else ASSESSMENT_AREAS[v])
+        f_area = st.selectbox("평가 영역", ["전체"] + list(ASSESSMENT_AREAS_DISPLAY.keys()), format_func=lambda v: "전체" if v=="전체" else ASSESSMENT_AREAS_DISPLAY[v])
     with c2:
         f_diff = st.selectbox("난이도", ["전체"] + list(DIFFICULTY_LEVELS.keys()), format_func=lambda v: "전체" if v=="전체" else DIFFICULTY_LEVELS[v])
     with c3:

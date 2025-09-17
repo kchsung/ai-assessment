@@ -1,7 +1,7 @@
 import random
 from datetime import datetime
 import streamlit as st
-from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS, QUESTION_TYPES
+from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS, QUESTION_TYPES
 
 
 def render(st):
@@ -11,7 +11,7 @@ def render(st):
     # 좌측: 문제 생성 설정
     with col1:
         st.header("문제 생성 설정")
-        area = st.selectbox("평가 영역", options=list(ASSESSMENT_AREAS.keys()), format_func=lambda k: ASSESSMENT_AREAS[k])
+        area = st.selectbox("평가 영역", options=list(ASSESSMENT_AREAS_DISPLAY.keys()), format_func=lambda k: ASSESSMENT_AREAS_DISPLAY[k])
         difficulty = st.selectbox("난이도", options=list(DIFFICULTY_LEVELS.keys()), format_func=lambda k: DIFFICULTY_LEVELS[k])
         qtype = st.selectbox("문제 유형", options=list(QUESTION_TYPES.keys()), format_func=lambda k: QUESTION_TYPES[k])
         

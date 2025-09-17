@@ -3,7 +3,7 @@ from datetime import datetime
 import streamlit as st
 from openai import OpenAI
 from src.config import get_secret
-from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS
+from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS
 
 class AIQuestionGenerator:
     def __init__(self):
@@ -11,7 +11,7 @@ class AIQuestionGenerator:
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY is missing")
         self.client = OpenAI(api_key=api_key)
-        self.assessment_areas = ASSESSMENT_AREAS
+        self.assessment_areas = ASSESSMENT_AREAS_DISPLAY
         self.difficulty_levels = DIFFICULTY_LEVELS
         
         # 기본 프롬프트 템플릿
@@ -234,7 +234,7 @@ class AIQuestionGenerator:
             if question_type == "multiple_choice":
                 q = {
                     "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
-                    "area": ASSESSMENT_AREAS[area],
+                    "area": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
                     "difficulty": DIFFICULTY_LEVELS[difficulty],
                     "type": question_type,
                     "question": qdata.get("problemTitle", ""),
@@ -243,7 +243,7 @@ class AIQuestionGenerator:
                         "generated_at": ts,
                         "model": model,
                         "lang": qdata.get("lang", "kr"),
-                        "category": ASSESSMENT_AREAS[area],
+                        "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
                         "topic": qdata.get("topic", ""),
                         "estimatedTime": qdata.get("estimatedTime", ""),
                         "scenario": qdata.get("scenario", ""),
@@ -254,7 +254,7 @@ class AIQuestionGenerator:
             else:  # subjective
                 q = {
                     "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
-                    "area": ASSESSMENT_AREAS[area],
+                    "area": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
                     "difficulty": DIFFICULTY_LEVELS[difficulty],
                     "type": question_type,
                     "question": qdata.get("title", ""),
@@ -263,7 +263,7 @@ class AIQuestionGenerator:
                         "generated_at": ts,
                         "model": model,
                         "lang": qdata.get("lang", "kr"),
-                        "category": ASSESSMENT_AREAS[area],
+                        "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
                         "topic": qdata.get("topic", ""),
                         "time_limit": qdata.get("time_limit", ""),
                         "topic_summary": qdata.get("topic_summary", ""),
