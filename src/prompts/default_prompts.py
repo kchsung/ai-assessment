@@ -25,3 +25,4 @@ DIFFICULTY_TIME_MAPPING = {
     "hard": "7분 이내",
     "very_hard": "10분 이내"
 }
+

@@ -42,7 +42,30 @@ def get_secret(name: str, default=None) -> str | None:
 def is_streamlit_cloud() -> bool:
     """Streamlit Cloud에서 실행 중인지 확인"""
     try:
-        # Streamlit Cloud 환경 변수 확인
-        return os.getenv("STREAMLIT_CLOUD") is not None
+        # Streamlit Cloud에서 설정되는 환경 변수들 확인
+        cloud_env_vars = [
+            "STREAMLIT_CLOUD",
+            "STREAMLIT_SHARING_MODE",
+            "STREAMLIT_SERVER_HEADLESS",
+            "STREAMLIT_SERVER_PORT"
+        ]
+        
+        # 환경 변수 중 하나라도 설정되어 있으면 Cloud로 판단
+        for env_var in cloud_env_vars:
+            if os.getenv(env_var):
+                return True
+        
+        # 추가 확인: Streamlit Cloud의 특정 설정들
+        import streamlit as st
+        try:
+            # Streamlit Cloud에서는 특정 설정들이 다르게 설정됨
+            if hasattr(st, 'config'):
+                # Cloud에서는 보통 headless 모드로 실행됨
+                if st.config.get_option("server.headless"):
+                    return True
+        except:
+            pass
+        
+        return False
     except:
         return False
