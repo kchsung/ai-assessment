@@ -41,10 +41,26 @@ def render(st):
     with col2:
         # 현재 설정 정보
         st.markdown("### 📊 현재 설정")
-        st.json({
+        
+        # 환경 정보 추가
+        from src.config import is_streamlit_cloud, get_secret
+        api_key = get_secret("OPENAI_API_KEY")
+        
+        config_info = {
             "selected_model": st.session_state.get("selected_model", "gpt-5-nano"),
-            "api_configured": "✅ 설정됨" if st.session_state.get("generator") else "❌ 미설정"
-        })
+            "api_configured": "✅ 설정됨" if st.session_state.get("generator") else "❌ 미설정",
+            "environment": "☁️ Streamlit Cloud" if is_streamlit_cloud() else "💻 로컬",
+            "api_key_source": "🔐 secrets" if api_key and "sk-proj-" in str(api_key) else "❌ 없음"
+        }
+        
+        st.json(config_info)
+        
+        # 환경별 안내 메시지
+        if not st.session_state.get("generator"):
+            if is_streamlit_cloud():
+                st.warning("**Streamlit Cloud**: Secrets 탭에서 API 키를 설정하세요")
+            else:
+                st.warning("**로컬**: .streamlit/secrets.toml 또는 .env 파일에 API 키를 설정하세요")
     
     # 모델별 특징 설명
     st.markdown("### 📋 모델별 특징")

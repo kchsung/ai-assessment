@@ -22,20 +22,32 @@ def init_state():
     if "db" not in st.session_state:
         # Edge 우선, 실패 시 Local fallback
         try:
-            st.session_state.db = EdgeDBClient(
-                base_url=os.getenv("EDGE_FUNCTION_URL"),
-                token=get_secret("EDGE_SHARED_TOKEN", default=None),
-                supabase_anon=get_secret("SUPABASE_ANON_KEY", default=None),
-            )
-        except Exception:
+            edge_url = get_secret("EDGE_FUNCTION_URL") or os.getenv("EDGE_FUNCTION_URL")
+            edge_token = get_secret("EDGE_SHARED_TOKEN") or os.getenv("EDGE_SHARED_TOKEN")
+            supabase_key = get_secret("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
+            
+            if edge_url and edge_token:
+                st.session_state.db = EdgeDBClient(
+                    base_url=edge_url,
+                    token=edge_token,
+                    supabase_anon=supabase_key,
+                )
+            else:
+                raise Exception("Edge Function 설정이 없습니다")
+        except Exception as e:
+            # Edge 실패 시 Local DB 사용
             st.session_state.db = LocalDBClient()
 
     if "generator" not in st.session_state:
         try:
+            # API 키 확인
+            api_key = get_secret("OPENAI_API_KEY")
+            if not api_key:
+                raise RuntimeError("OPENAI_API_KEY가 설정되지 않았습니다")
             st.session_state.generator = AIQuestionGenerator()
         except RuntimeError as e:
             st.session_state.generator = None
-            st.warning(f"AI 생성기 초기화 실패: {e}")
+            # 경고 메시지는 설정 탭에서만 표시
 
     if "hitl" not in st.session_state:
         st.session_state.hitl = HITLManager(st.session_state.db)
