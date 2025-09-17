@@ -4,24 +4,50 @@ from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY
 def render(st):
     
     # 검색 필터
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 2, 1])
     with c1:
-        f_area = st.selectbox("평가 영역", ["전체"] + list(ASSESSMENT_AREAS_DISPLAY.keys()), format_func=lambda v: "전체" if v=="전체" else ASSESSMENT_AREAS_DISPLAY[v])
+        f_area = st.selectbox("평가 영역", ["전체"] + list(ASSESSMENT_AREAS_DISPLAY.keys()), 
+                             format_func=lambda v: "전체" if v=="전체" else ASSESSMENT_AREAS_DISPLAY[v])
     with c2:
-        f_diff = st.selectbox("난이도", ["전체"] + list(DIFFICULTY_LEVELS.keys()), format_func=lambda v: "전체" if v=="전체" else DIFFICULTY_LEVELS[v])
+        f_diff = st.selectbox("난이도", ["전체"] + list(DIFFICULTY_LEVELS.keys()), 
+                             format_func=lambda v: "전체" if v=="전체" else DIFFICULTY_LEVELS[v])
     with c3:
-        f_type = st.selectbox("유형", ["전체"] + list(QUESTION_TYPES.keys()), format_func=lambda v: "전체" if v=="전체" else QUESTION_TYPES[v])
+        f_type = st.selectbox("유형", ["전체"] + list(QUESTION_TYPES.keys()), 
+                             format_func=lambda v: "전체" if v=="전체" else QUESTION_TYPES[v])
     with c4:
-        # 검색 버튼을 아래쪽 정렬로 맞춤
+        search_text = st.text_input("검색어", placeholder="문제 내용으로 검색...", key="search_text")
+    with c5:
         st.markdown("<br>", unsafe_allow_html=True)  # 공간 추가
         if st.button("🔍 검색", use_container_width=True):
-            filters={}
-            if f_area!="전체": filters["area"]=ASSESSMENT_AREAS[f_area]
-            if f_diff!="전체": filters["difficulty"]=DIFFICULTY_LEVELS[f_diff]
-            if f_type!="전체": filters["type"]=f_type
-            st.session_state.filtered_questions = st.session_state.db.get_questions(filters)
+            filters = {}
+            if f_area != "전체": 
+                filters["area"] = ASSESSMENT_AREAS[f_area]
+            if f_diff != "전체": 
+                filters["difficulty"] = DIFFICULTY_LEVELS[f_diff]
+            if f_type != "전체": 
+                filters["type"] = f_type
+            
+            # 데이터베이스에서 필터링된 결과 가져오기
+            questions = st.session_state.db.get_questions(filters)
+            
+            # 검색어가 있으면 클라이언트 측에서 추가 필터링
+            if search_text.strip():
+                search_term = search_text.strip().lower()
+                questions = [
+                    q for q in questions 
+                    if search_term in (q.get("question") or q.get("question_text", "")).lower()
+                ]
+            
+            st.session_state.filtered_questions = questions
+            st.session_state.current_filters = filters
+            st.session_state.search_text = search_text.strip()
             st.session_state.current_page = 1  # 검색 시 첫 페이지로 리셋
             st.session_state.selected_question_id = None  # 검색 시 선택 초기화
+            st.rerun()
+    
+    # 초기 로드 시 전체 문제 표시
+    if not st.session_state.get("filtered_questions"):
+        st.session_state.filtered_questions = st.session_state.db.get_questions({})
 
     # 좌우 분할 레이아웃
     col_left, col_right = st.columns([1, 2])
@@ -145,10 +171,6 @@ def render(st):
                     for goal in meta["goal"]:
                         st.markdown(f"- {goal}")
             
-            # 피드백 버튼 (우측에 배치)
-            st.markdown("---")
-            if st.button("💬 피드백 작성", key=f"feedback_{selected_q['id']}", use_container_width=True):
-                st.session_state.feedback_question = selected_q
             
             # 피드백 통계 표시
             stats = st.session_state.db.get_feedback_stats(selected_q["id"])
