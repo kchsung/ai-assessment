@@ -9,7 +9,6 @@ import sqlite3
 import requests
 import pandas as pd
 import streamlit as st
-from dotenv import load_dotenv
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -20,7 +19,7 @@ from openai import OpenAI
 
 # 1) 로컬 개발 환경일 수 있으니 .env를 "가능하면" 읽어둡니다.
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv 
     load_dotenv(override=False)   # 이미 설정된 환경변수는 덮어쓰지 않음
 except Exception:
     pass  # 클라우드나 미설치 환경에서도 문제없이 통과
