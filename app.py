@@ -16,6 +16,93 @@ from src.ui.tabs.tab_settings import render as render_settings
 
 st.set_page_config(page_title="AI 활용능력평가 에이전트 v2.0", page_icon="🤖", layout="wide")
 
+# 폰트 설정 및 헤더 크기 조정
+st.markdown("""
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+/* 헤더 영역 크기 줄이기 */
+.stApp > header {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+}
+
+/* 메인 타이틀 크기 줄이기 */
+.stApp > header .stAppHeader {
+    padding: 0.5rem 1rem !important;
+}
+
+/* 페이지 타이틀 크기 조정 */
+h1 {
+    font-size: 1.8rem !important;
+    margin-bottom: 0.5rem !important;
+    margin-top: 0.5rem !important;
+}
+
+/* 서브타이틀 크기 조정 */
+.stApp > header p {
+    font-size: 0.9rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+/* 탭 메뉴 패딩 줄이기 */
+.stTabs {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.stTabs [data-baseweb="tab-list"] {
+    padding: 0.5rem 0 !important;
+}
+
+/* 전체 앱 폰트 설정 */
+.stApp {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif !important;
+}
+
+/* 제목 폰트 */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+    font-weight: 600 !important;
+}
+
+/* 본문 텍스트 */
+p, div, span, label {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+}
+
+/* 버튼 폰트 */
+.stButton > button {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+    font-weight: 500 !important;
+}
+
+/* 입력 필드 폰트 */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stSelectbox > div > div > select {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+}
+
+/* 탭 폰트 */
+.stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+    font-weight: 500 !important;
+}
+
+/* 메트릭 폰트 */
+[data-testid="metric-container"] {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+}
+
+/* JSON 표시 폰트 */
+.stJson {
+    font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', monospace !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # --- 세션 초기화 ---
 def init_state():
     if "db" not in st.session_state:

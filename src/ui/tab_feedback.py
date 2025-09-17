@@ -5,17 +5,6 @@ import openai
 import json
 
 def render(st):
-    # 헤더와 AI 검토 버튼을 같은 라인에 배치
-    col_header, col_ai = st.columns([3, 1])
-    
-    with col_header:
-        st.header("💬 피드백 & Human-in-the-Loop")
-    
-    with col_ai:
-        st.markdown("<br>", unsafe_allow_html=True)  # 공간 맞춤
-        if st.button("🤖 AI로 난이도 검토", use_container_width=True, type="secondary"):
-            st.session_state.show_ai_review = True
-
     # 문제 선택 (통합된 인터페이스)
     all_q = st.session_state.db.get_questions()
     if not all_q:
@@ -29,11 +18,20 @@ def render(st):
         display_text = f"{qt[:60]}{'...' if len(qt) > 60 else ''} [{question['id'][:8]}...]"
         question_options[display_text] = question
     
-    selected_display = st.selectbox(
-        "📋 피드백할 문제 선택", 
-        options=list(question_options.keys()),
-        help="문제를 선택하면 피드백을 입력하고 기존 피드백을 조회할 수 있습니다."
-    )
+    # 문제 선택과 AI 검토 버튼을 같은 라인에 배치
+    col_select, col_ai = st.columns([3, 1])
+    
+    with col_select:
+        selected_display = st.selectbox(
+            "📋 피드백할 문제 선택", 
+            options=list(question_options.keys()),
+            help="문제를 선택하면 피드백을 입력하고 기존 피드백을 조회할 수 있습니다."
+        )
+    
+    with col_ai:
+        st.markdown("<br>", unsafe_allow_html=True)  # 공간 맞춤
+        if st.button("🤖 AI로 난이도 검토", use_container_width=True, type="secondary"):
+            st.session_state.show_ai_review = True
     
     if selected_display:
         selected_question = question_options[selected_display]

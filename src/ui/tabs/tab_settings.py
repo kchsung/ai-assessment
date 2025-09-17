@@ -1,7 +1,6 @@
 import streamlit as st
 
 def render(st):
-    st.header("⚙️ 설정")
     
     # OpenAI 모델 설정
     st.subheader("🤖 OpenAI 모델 설정")

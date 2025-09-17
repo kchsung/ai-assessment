@@ -4,7 +4,6 @@ import plotly.graph_objects as go
 import streamlit as st
 
 def render(st):
-    st.header("📊 분석 대시보드")
     all_q = st.session_state.db.get_questions()
     if not all_q:
         st.info("데이터가 없습니다."); return

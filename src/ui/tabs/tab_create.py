@@ -10,7 +10,6 @@ def render(st):
     
     # 좌측: 문제 생성 설정
     with col1:
-        st.header("문제 생성")
         area = st.selectbox("평가 영역", options=list(ASSESSMENT_AREAS_DISPLAY.keys()), format_func=lambda k: ASSESSMENT_AREAS_DISPLAY[k])
         difficulty = st.selectbox("난이도", options=list(DIFFICULTY_LEVELS.keys()), format_func=lambda k: DIFFICULTY_LEVELS[k])
         qtype = st.selectbox("문제 유형", options=list(QUESTION_TYPES.keys()), format_func=lambda k: QUESTION_TYPES[k])
@@ -32,7 +31,7 @@ def render(st):
 
     # 우측: 생성된 문제 미리보기
     with col2:
-        st.header("생성된 문제 보기")
+        st.markdown("#### 생성된 문제 보기")
         q = st.session_state.get("last_generated")
         if q:
             st.info(f"**문제 ID**: {q['id']}  \n**평가 영역**: {q['area']}  \n**난이도**: {q['difficulty']}  \n**유형**: {q['type']}")

@@ -2,7 +2,6 @@ import streamlit as st
 from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS, QUESTION_TYPES
 
 def render(st):
-    st.header("📚 문제 은행")
     
     # 검색 필터
     c1, c2, c3, c4 = st.columns(4)
