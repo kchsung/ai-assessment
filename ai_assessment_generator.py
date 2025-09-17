@@ -417,9 +417,15 @@ class AIQuestionGenerator:
 
             import re
             try:
+                # JSON 블록 추출 시도
                 m = re.search(r"\{[\s\S]*\}", content)
-                qdata = json.loads(m.group() if m else content)
-            except Exception:
+                if m:
+                    qdata = json.loads(m.group())
+                else:
+                    # JSON이 아닌 경우 전체를 문제로 처리
+                    qdata = {"question": content, "evaluation_criteria": ["내용의 적절성 (100점)"]}
+            except Exception as e:
+                # JSON 파싱 실패 시 전체 내용을 문제로 사용
                 qdata = {"question": content, "evaluation_criteria": ["내용의 적절성 (100점)"]}
 
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -582,7 +588,18 @@ def main():
                 q = st.session_state.last_generated
                 st.info(f"**문제 ID**: {q['id']}  \n**평가 영역**: {q['area']}  \n**난이도**: {q['difficulty']}  \n**유형**: {q['type']}")
                 st.markdown("### 문제")
-                st.markdown(q["question"])
+                # JSON이 그대로 출력되는 경우를 처리
+                question_text = q["question"]
+                if question_text.startswith('{') and '"question":' in question_text:
+                    # JSON 파싱 시도
+                    try:
+                        import re
+                        json_match = re.search(r'"question":\s*"([^"]*)"', question_text)
+                        if json_match:
+                            question_text = json_match.group(1)
+                    except:
+                        pass
+                st.markdown(question_text)
                 if (q.get("metadata") or {}).get("scenario"):
                     st.markdown("### 상황 설명")
                     st.markdown(q["metadata"]["scenario"])
