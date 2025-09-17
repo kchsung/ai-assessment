@@ -1,0 +1,11 @@
+# requirements.txt
+"""
+streamlit
+openai
+python-dotenv
+pandas
+datetime
+sqlite3
+plotly
+datetime
+"""
