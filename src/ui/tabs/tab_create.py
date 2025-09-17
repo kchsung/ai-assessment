@@ -11,33 +11,19 @@ def render(st):
     # 좌측: 문제 생성 설정
     with col1:
         st.header("문제 생성 설정")
-        method = st.radio("생성 방식", ["AI 자동 생성", "템플릿 기반 생성"], help="AI 자동 생성은 OpenAI API 사용")
         area = st.selectbox("평가 영역", options=list(ASSESSMENT_AREAS.keys()), format_func=lambda k: ASSESSMENT_AREAS[k])
         difficulty = st.selectbox("난이도", options=list(DIFFICULTY_LEVELS.keys()), format_func=lambda k: DIFFICULTY_LEVELS[k])
         qtype = st.selectbox("문제 유형", options=list(QUESTION_TYPES.keys()), format_func=lambda k: QUESTION_TYPES[k])
-
-        context = ""
-        if method == "AI 자동 생성":
-            context = st.text_area("추가 컨텍스트 (선택)", placeholder="예: 이커머스 마케팅팀, 금융 리스크 관리...")
+        
+        # 사용자 추가 요구사항 (항상 표시)
+        context = st.text_area("사용자 추가 요구사항", placeholder="예: 이커머스 마케팅팀, 금융 리스크 관리, 특정 도구 사용 등...", help="문제 생성 시 반영할 추가적인 요구사항이나 맥락을 입력하세요")
 
         if st.button("🎯 문제 생성", type="primary", use_container_width=True):
             with st.spinner("생성 중..."):
-                if method == "AI 자동 생성":
-                    if st.session_state.generator is None:
-                        st.error("AI 생성기가 초기화되지 않았습니다. API 키를 확인하세요.")
-                        return
-                    q = st.session_state.generator.generate_with_ai(area, difficulty, qtype, context)
-                else:
-                    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    q = {
-                        "id": f"Q_TPL_{ts}_{random.randint(1000, 9999)}",
-                        "area": ASSESSMENT_AREAS[area],
-                        "difficulty": DIFFICULTY_LEVELS[difficulty],
-                        "type": QUESTION_TYPES[qtype],
-                        "question": f"{ASSESSMENT_AREAS[area]} 영역 / {DIFFICULTY_LEVELS[difficulty]} / {QUESTION_TYPES[qtype]} 문제",
-                        "ai_generated": False,
-                        "metadata": {"generated_at": ts, "template_based": True}
-                    }
+                if st.session_state.generator is None:
+                    st.error("AI 생성기가 초기화되지 않았습니다. API 키를 확인하세요.")
+                    return
+                q = st.session_state.generator.generate_with_ai(area, difficulty, qtype, context)
                 if q and st.session_state.db.save_question(q):
                     st.success("문제가 저장되었습니다!")
                     st.session_state.last_generated = q

@@ -93,7 +93,7 @@ class AIQuestionGenerator:
 평가 영역: {area_display}
 난이도: {self.difficulty_levels[difficulty]} - {guide}
 시간 제한: {time_limit}
-추가 맥락: {context if context else '없음'}
+사용자 추가 요구사항: {context if context else '없음'}
 
 요구사항:
 1. 실무 상황을 반영한 현실적인 문제
@@ -154,7 +154,7 @@ class AIQuestionGenerator:
 평가 영역: {area_display}
 난이도: {self.difficulty_levels[difficulty]} - {guide}
 시간 제한: {time_limit}
-추가 맥락: {context if context else '없음'}
+사용자 추가 요구사항: {context if context else '없음'}
 
 요구사항:
 1. 실무 상황을 반영한 현실적인 문제
