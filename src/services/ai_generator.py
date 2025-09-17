@@ -124,13 +124,6 @@ class AIQuestionGenerator:
             user_prompt = self._build_user_prompt(area, difficulty, question_type, context)
             st.info("📝 기본 프롬프트 사용 중")
             
-        # 디버깅용 프롬프트 표시
-        with st.expander("🔍 사용된 프롬프트 확인 (디버깅)", expanded=False):
-            st.markdown("**System Prompt:**")
-            st.text(system_prompt)
-            st.markdown("**User Prompt:**")
-            st.text(user_prompt)
-            
         try:
             # 세션 상태에서 선택된 모델 가져오기 (기본값: gpt-5-nano)
             model = st.session_state.get("selected_model", "gpt-5-nano")

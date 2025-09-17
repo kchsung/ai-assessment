@@ -21,6 +21,7 @@ def render(st):
             if f_type!="전체": filters["type"]=f_type
             st.session_state.filtered_questions = st.session_state.db.get_questions(filters)
             st.session_state.current_page = 1  # 검색 시 첫 페이지로 리셋
+            st.session_state.selected_question_id = None  # 검색 시 선택 초기화
 
     # 좌우 분할 레이아웃
     col_left, col_right = st.columns([1, 2])
@@ -33,123 +34,34 @@ def render(st):
         if qs:
             st.markdown(f"**총 {len(qs)}개 문제**")
             
-            # 페이징 설정
-            items_per_page = 10
-            total_pages = (len(qs) + items_per_page - 1) // items_per_page
-            current_page = st.session_state.get("current_page", 1)
-            
-            # 페이지네이션 컨트롤
-            if total_pages > 1:
-                col_prev, col_info, col_next = st.columns([1, 2, 1])
-                with col_prev:
-                    if st.button("◀️ 이전", disabled=(current_page <= 1)):
-                        st.session_state.current_page = current_page - 1
-                        st.rerun()
-                with col_info:
-                    st.markdown(f"**{current_page} / {total_pages} 페이지**")
-                with col_next:
-                    if st.button("다음 ▶️", disabled=(current_page >= total_pages)):
-                        st.session_state.current_page = current_page + 1
-                        st.rerun()
-            
-            # 현재 페이지의 문제들 표시
-            start_idx = (current_page - 1) * items_per_page
-            end_idx = min(start_idx + items_per_page, len(qs))
-            current_questions = qs[start_idx:end_idx]
-            
-            # 카드뷰로 문제 표시
-            for idx, q in enumerate(current_questions):
+            # 문제 선택을 위한 selectbox 사용 (페이지 새로고침 없음)
+            question_options = {}
+            for q in qs:
                 question_text = q.get("question") or q.get("question_text","(없음)")
-                is_selected = st.session_state.get("selected_question_id") == q["id"]
-                meta = q.get("metadata", {})
-                
-                # 난이도별 색상 설정
-                difficulty_colors = {
-                    "아주 쉬움": "#4CAF50",  # 초록
-                    "쉬움": "#8BC34A",       # 연한 초록
-                    "보통": "#FF9800",       # 주황
-                    "어려움": "#F44336",     # 빨강
-                    "아주 어려움": "#9C27B0" # 보라
-                }
-                
-                difficulty_color = difficulty_colors.get(q['difficulty'], "#757575")
-                
-                # 카드 컨테이너
-                with st.container():
-                    # 상단 태그 영역 (한 줄 형태)
-                    col_tag1, col_tag2, col_time, col_feedback = st.columns([1, 1, 1, 1])
-                    
-                    with col_tag1:
-                        st.markdown(f"""
-                        <span style="
-                            background-color: {difficulty_color};
-                            color: white;
-                            padding: 4px 8px;
-                            border-radius: 6px;
-                            font-size: 12px;
-                            font-weight: bold;
-                        ">{q['difficulty']}</span>
-                        """, unsafe_allow_html=True)
-                    
-                    with col_tag2:
-                        st.markdown(f"""
-                        <span style="
-                            background-color: {difficulty_color};
-                            color: white;
-                            padding: 4px 8px;
-                            border-radius: 6px;
-                            font-size: 12px;
-                            font-weight: bold;
-                        ">{q['area']}</span>
-                        """, unsafe_allow_html=True)
-                    
-                    with col_time:
-                        estimated_time = meta.get('estimatedTime', '3분 이내')
-                        st.markdown(f"""
-                        <div style="color: #666; font-size: 12px;">
-                            ⏱️ {estimated_time}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    with col_feedback:
-                        stats = st.session_state.db.get_feedback_stats(q['id'])
-                        feedback_count = stats['feedback_count'] if stats else 0
-                        st.markdown(f"""
-                        <div style="color: #666; font-size: 12px;">
-                            💬 {feedback_count}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    # 카드 클릭 버튼 (question_text 포함, 높이 증가)
-                    display_text = question_text[:200] + ('...' if len(question_text) > 200 else '')
-                    
-                    # 버튼 높이를 3줄 고정 크기로 설정
-                    st.markdown(f"""
-                    <style>
-                    div[data-testid="column"] button[kind="secondary"][data-testid="baseButton-secondary"]:has-text("{display_text[:50]}") {{
-                        height: 90px !important;
-                        min-height: 90px !important;
-                        max-height: 90px !important;
-                        line-height: 1.3 !important;
-                        white-space: normal !important;
-                        text-align: left !important;
-                        padding: 12px !important;
-                        overflow: hidden !important;
-                        display: -webkit-box !important;
-                        -webkit-line-clamp: 3 !important;
-                        -webkit-box-orient: vertical !important;
-                    }}
-                    </style>
-                    """, unsafe_allow_html=True)
-                    
-                    if st.button(
-                        f"📋 {display_text}",
-                        key=f"card_{q['id']}",
-                        use_container_width=True,
-                        help=f"클릭하여 상세보기"
-                    ):
-                        st.session_state.selected_question_id = q["id"]
-                        st.session_state.selected_question = q
+                display_text = f"[{q['difficulty']}] {q['area']} - {question_text[:100]}{'...' if len(question_text) > 100 else ''}"
+                question_options[display_text] = q
+            
+            # 현재 선택된 문제 찾기
+            current_selection = None
+            if st.session_state.get("selected_question_id"):
+                for display_text, q in question_options.items():
+                    if q["id"] == st.session_state.selected_question_id:
+                        current_selection = display_text
+                        break
+            
+            # 문제 선택 드롭다운
+            selected_display = st.selectbox(
+                "문제를 선택하세요:",
+                options=list(question_options.keys()),
+                index=list(question_options.keys()).index(current_selection) if current_selection else 0,
+                key="question_selector"
+            )
+            
+            # 선택된 문제를 세션 상태에 저장
+            if selected_display and selected_display in question_options:
+                selected_q = question_options[selected_display]
+                st.session_state.selected_question_id = selected_q["id"]
+                st.session_state.selected_question = selected_q
         else:
             st.info("검색 결과가 없습니다.")
     
@@ -187,9 +99,7 @@ def render(st):
                             
                             # 정답 표시
                             if step.get('answer'):
-                                show_answer = st.toggle("정답 보기", key=f"bank_answer_toggle_{step.get('step', 1)}")
-                                if show_answer:
-                                    st.success(f"정답: {step['answer']}")
+                                st.markdown(f"**정답: {step['answer']}**")
                 else:
                     # 단일 스텝인 경우
                     step = steps[0]
@@ -206,9 +116,7 @@ def render(st):
                     
                     # 정답 표시
                     if step.get('answer'):
-                        show_answer = st.toggle("정답 보기", key="bank_answer_toggle_single")
-                        if show_answer:
-                            st.success(f"정답: {step['answer']}")
+                        st.markdown(f"**정답: {step['answer']}**")
             
             # 주관식 문제 상세 표시
             elif selected_q.get("type") == "subjective":
