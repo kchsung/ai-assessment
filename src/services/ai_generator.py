@@ -104,7 +104,7 @@ class AIQuestionGenerator:
 다음 JSON 형식으로 응답해주세요:
 {{
   "lang": "kr",
-  "category": "interview",
+  "category": "{self.assessment_areas[area]}",
   "problemTitle": "문제 제목",
   "topic": "{self.assessment_areas[area] if area not in ['work_application', 'daily_problem_solving'] else '구체적인 직무/상황'}",
   "difficulty": "{difficulty}",
@@ -165,7 +165,7 @@ class AIQuestionGenerator:
 다음 JSON 형식으로 응답해주세요:
 {{
   "lang": "kr",
-  "category": "interview",
+  "category": "{self.assessment_areas[area]}",
   "topic": "{self.assessment_areas[area] if area not in ['work_application', 'daily_problem_solving'] else '구체적인 직무/상황'}",
   "difficulty": "{difficulty}",
   "time_limit": "{time_limit}",
