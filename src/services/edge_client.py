@@ -1,5 +1,6 @@
 import os
 import requests
+from .local_db import LocalDBClient
 
 class EdgeDBClient:
     def __init__(self, base_url: str | None, token: str | None, supabase_anon: str | None):
@@ -10,8 +11,16 @@ class EdgeDBClient:
             raise RuntimeError("EDGE_FUNCTION_URL not set")
         if not self.token:
             raise RuntimeError("EDGE_SHARED_TOKEN not set")
+        
+        # Fallback을 위한 LocalDBClient 인스턴스
+        self._local_fallback = LocalDBClient()
+        self._use_fallback = False
 
     def _call(self, action: str, params: dict | None = None):
+        # Fallback 모드인 경우 LocalDBClient 사용
+        if self._use_fallback:
+            return self._local_call(action, params)
+        
         headers = {
             "content-type": "application/json",
             "x-edge-token": self.token,
@@ -19,13 +28,53 @@ class EdgeDBClient:
         if self.supabase_anon:
             headers["authorization"] = f"Bearer {self.supabase_anon}"
 
-        resp = requests.post(self.base_url, headers=headers, json={"action": action, "params": params or {}})
-        if resp.status_code >= 400:
-            raise RuntimeError(f"Edge error {resp.status_code}: {resp.text}")
-        data = resp.json()
-        if not data.get("ok"):
-            raise RuntimeError(f"Edge failure: {data.get('error')}")
-        return data.get("data")
+        try:
+            resp = requests.post(self.base_url, headers=headers, json={"action": action, "params": params or {}})
+            if resp.status_code >= 400:
+                raise RuntimeError(f"Edge error {resp.status_code}: {resp.text}")
+            
+            # JSON 파싱 시도
+            try:
+                data = resp.json()
+            except ValueError as e:
+                raise RuntimeError(f"Edge JSON parse error: {e}, Response: {resp.text}")
+            
+            if not data.get("ok"):
+                raise RuntimeError(f"Edge failure: {data.get('error')}")
+            return data.get("data")
+        except Exception as e:
+            # Edge Function 실패 시 fallback 모드로 전환
+            print(f"Edge Function 실패, LocalDB로 fallback: {e}")
+            self._use_fallback = True
+            return self._local_call(action, params)
+    
+    def _local_call(self, action: str, params: dict | None = None):
+        """LocalDBClient를 사용한 fallback 호출"""
+        if action == "get_questions":
+            return self._local_fallback.get_questions(params)
+        elif action == "save_question":
+            return self._local_fallback.save_question(params)
+        elif action == "save_feedback":
+            return self._local_fallback.save_feedback(params)
+        elif action == "get_feedback_stats":
+            return self._local_fallback.get_feedback_stats(params.get("question_id"))
+        elif action == "get_prompts":
+            return self._local_fallback.get_prompts(params.get("category"), params.get("lang", "kr"))
+        elif action == "adjust_difficulty":
+            return self._local_fallback.adjust_difficulty(
+                params.get("question_id"), 
+                params.get("new_difficulty"), 
+                params.get("reason"), 
+                params.get("adjusted_by", "system")
+            )
+        elif action == "count_feedback":
+            return self._local_fallback.count_feedback()
+        elif action == "count_adjustments":
+            return self._local_fallback.count_adjustments()
+        elif action == "reset_database":
+            return self._local_fallback.reset_database()
+        else:
+            raise RuntimeError(f"Unknown action: {action}")
 
     # API
     def save_question(self, q: dict) -> bool:
