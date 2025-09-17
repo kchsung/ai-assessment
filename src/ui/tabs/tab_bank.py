@@ -13,17 +13,20 @@ def render(st):
     with c3:
         f_type = st.selectbox("유형", ["전체"] + list(QUESTION_TYPES.keys()), format_func=lambda v: "전체" if v=="전체" else QUESTION_TYPES[v])
     with c4:
+        # 검색 버튼을 아래쪽 정렬로 맞춤
+        st.markdown("<br>", unsafe_allow_html=True)  # 공간 추가
         if st.button("🔍 검색", use_container_width=True):
             filters={}
             if f_area!="전체": filters["area"]=ASSESSMENT_AREAS[f_area]
             if f_diff!="전체": filters["difficulty"]=DIFFICULTY_LEVELS[f_diff]
             if f_type!="전체": filters["type"]=f_type
             st.session_state.filtered_questions = st.session_state.db.get_questions(filters)
+            st.session_state.current_page = 1  # 검색 시 첫 페이지로 리셋
 
     # 좌우 분할 레이아웃
     col_left, col_right = st.columns([1, 2])
     
-    # 좌측: 검색 결과 리스트
+    # 좌측: 검색 결과 카드뷰
     with col_left:
         st.markdown("### 📋 검색 결과")
         qs = st.session_state.get("filtered_questions", [])
@@ -31,28 +34,123 @@ def render(st):
         if qs:
             st.markdown(f"**총 {len(qs)}개 문제**")
             
-            # 문제 리스트 (간단한 형태)
-            for idx, q in enumerate(qs):
+            # 페이징 설정
+            items_per_page = 10
+            total_pages = (len(qs) + items_per_page - 1) // items_per_page
+            current_page = st.session_state.get("current_page", 1)
+            
+            # 페이지네이션 컨트롤
+            if total_pages > 1:
+                col_prev, col_info, col_next = st.columns([1, 2, 1])
+                with col_prev:
+                    if st.button("◀️ 이전", disabled=(current_page <= 1)):
+                        st.session_state.current_page = current_page - 1
+                        st.rerun()
+                with col_info:
+                    st.markdown(f"**{current_page} / {total_pages} 페이지**")
+                with col_next:
+                    if st.button("다음 ▶️", disabled=(current_page >= total_pages)):
+                        st.session_state.current_page = current_page + 1
+                        st.rerun()
+            
+            # 현재 페이지의 문제들 표시
+            start_idx = (current_page - 1) * items_per_page
+            end_idx = min(start_idx + items_per_page, len(qs))
+            current_questions = qs[start_idx:end_idx]
+            
+            # 카드뷰로 문제 표시
+            for idx, q in enumerate(current_questions):
                 question_text = q.get("question") or q.get("question_text","(없음)")
                 is_selected = st.session_state.get("selected_question_id") == q["id"]
+                meta = q.get("metadata", {})
                 
-                # 선택된 문제는 다른 스타일로 표시
-                if is_selected:
-                    st.markdown(f"**▶️ {idx+1}. [{q['difficulty']}] {q['area']}**")
-                    st.caption(f"{question_text[:50]}...")
-                else:
-                    if st.button(f"{idx+1}. [{q['difficulty']}] {q['area']}", key=f"select_{q['id']}", use_container_width=True):
+                # 난이도별 색상 설정
+                difficulty_colors = {
+                    "아주 쉬움": "#4CAF50",  # 초록
+                    "쉬움": "#8BC34A",       # 연한 초록
+                    "보통": "#FF9800",       # 주황
+                    "어려움": "#F44336",     # 빨강
+                    "아주 어려움": "#9C27B0" # 보라
+                }
+                
+                difficulty_color = difficulty_colors.get(q['difficulty'], "#757575")
+                
+                # 카드 컨테이너
+                with st.container():
+                    # 상단 태그 영역 (한 줄 형태)
+                    col_tag1, col_tag2, col_time, col_feedback = st.columns([1, 1, 1, 1])
+                    
+                    with col_tag1:
+                        st.markdown(f"""
+                        <span style="
+                            background-color: {difficulty_color};
+                            color: white;
+                            padding: 4px 8px;
+                            border-radius: 6px;
+                            font-size: 12px;
+                            font-weight: bold;
+                        ">{q['difficulty']}</span>
+                        """, unsafe_allow_html=True)
+                    
+                    with col_tag2:
+                        st.markdown(f"""
+                        <span style="
+                            background-color: {difficulty_color};
+                            color: white;
+                            padding: 4px 8px;
+                            border-radius: 6px;
+                            font-size: 12px;
+                            font-weight: bold;
+                        ">{q['area']}</span>
+                        """, unsafe_allow_html=True)
+                    
+                    with col_time:
+                        estimated_time = meta.get('estimatedTime', '3분 이내')
+                        st.markdown(f"""
+                        <div style="color: #666; font-size: 12px;">
+                            ⏱️ {estimated_time}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col_feedback:
+                        stats = st.session_state.db.get_feedback_stats(q['id'])
+                        feedback_count = stats['feedback_count'] if stats else 0
+                        st.markdown(f"""
+                        <div style="color: #666; font-size: 12px;">
+                            💬 {feedback_count}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # 카드 클릭 버튼 (question_text 포함, 높이 증가)
+                    display_text = question_text[:200] + ('...' if len(question_text) > 200 else '')
+                    
+                    # 버튼 높이를 3줄 고정 크기로 설정
+                    st.markdown(f"""
+                    <style>
+                    div[data-testid="column"] button[kind="secondary"][data-testid="baseButton-secondary"]:has-text("{display_text[:50]}") {{
+                        height: 90px !important;
+                        min-height: 90px !important;
+                        max-height: 90px !important;
+                        line-height: 1.3 !important;
+                        white-space: normal !important;
+                        text-align: left !important;
+                        padding: 12px !important;
+                        overflow: hidden !important;
+                        display: -webkit-box !important;
+                        -webkit-line-clamp: 3 !important;
+                        -webkit-box-orient: vertical !important;
+                    }}
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    if st.button(
+                        f"📋 {display_text}",
+                        key=f"card_{q['id']}",
+                        use_container_width=True,
+                        help=f"클릭하여 상세보기"
+                    ):
                         st.session_state.selected_question_id = q["id"]
                         st.session_state.selected_question = q
-                        st.rerun()
-                    st.caption(f"{question_text[:50]}...")
-                
-                # 피드백 통계
-                stats = st.session_state.db.get_feedback_stats(q["id"])
-                if stats:
-                    st.caption(f"📊 n={stats['feedback_count']} | 난이도 {stats['avg_difficulty']:.1f}")
-                
-                st.markdown("---")
         else:
             st.info("검색 결과가 없습니다.")
     
@@ -173,15 +271,8 @@ def render(st):
             
             # 피드백 버튼 (우측에 배치)
             st.markdown("---")
-            col_fb1, col_fb2 = st.columns(2)
-            with col_fb1:
-                if st.button("💬 피드백 작성", key=f"feedback_{selected_q['id']}", use_container_width=True):
-                    st.session_state.feedback_question = selected_q
-            with col_fb2:
-                if st.button("🔄 다른 문제 선택", key=f"clear_{selected_q['id']}", use_container_width=True):
-                    st.session_state.selected_question_id = None
-                    st.session_state.selected_question = None
-                    st.rerun()
+            if st.button("💬 피드백 작성", key=f"feedback_{selected_q['id']}", use_container_width=True):
+                st.session_state.feedback_question = selected_q
             
             # 피드백 통계 표시
             stats = st.session_state.db.get_feedback_stats(selected_q["id"])
