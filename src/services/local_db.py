@@ -46,6 +46,19 @@ class LocalDBClient:
             adjusted_by TEXT,
             adjusted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )""")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS prompts (
+            id TEXT PRIMARY KEY,
+            lang TEXT NOT NULL DEFAULT 'kr',
+            category TEXT NOT NULL,
+            title TEXT NOT NULL,
+            prompt_text TEXT NOT NULL,
+            description TEXT,
+            tags TEXT,
+            active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
         conn.commit(); conn.close()
 
     # API (Edge와 인터페이스 동일)
@@ -145,6 +158,35 @@ class LocalDBClient:
     def count_adjustments(self) -> int:
         conn = sqlite3.connect(self.db_path); df = pd.read_sql_query("SELECT COUNT(*) cnt FROM difficulty_adjustments", conn); conn.close()
         return int(df.iloc[0]["cnt"]) if not df.empty else 0
+
+    def get_prompts(self, category: str = None, lang: str = "kr"):
+        """프롬프트 조회 - category와 lang으로 필터링"""
+        conn = sqlite3.connect(self.db_path)
+        q = "SELECT * FROM prompts WHERE lang = ? AND active = TRUE"
+        params = [lang]
+        
+        if category:
+            q += " AND category = ?"
+            params.append(category)
+        
+        df = pd.read_sql_query(q, conn, params=params)
+        conn.close()
+        
+        out = []
+        for _, r in df.iterrows():
+            out.append({
+                "id": r["id"],
+                "lang": r["lang"],
+                "category": r["category"],
+                "title": r["title"],
+                "prompt_text": r["prompt_text"],
+                "description": r["description"],
+                "tags": json.loads(r["tags"]) if r["tags"] else [],
+                "active": r["active"],
+                "created_at": r["created_at"],
+                "updated_at": r["updated_at"]
+            })
+        return out
 
     def reset_database(self):
         if os.path.exists(self.db_path): os.remove(self.db_path)

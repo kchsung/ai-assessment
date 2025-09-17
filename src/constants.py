@@ -4,12 +4,15 @@ ASSESSMENT_AREAS = {
     "tool_utilization": "AI 도구 활용능력",
     "ethics_security": "AI 윤리/보안 인식",
     "work_application": "업무 적용 능력",
+    "daily_problem_solving": "일상문제 해결",
 }
 
 DIFFICULTY_LEVELS = {
-    "basic": "초급",
-    "intermediate": "중급",
-    "advanced": "고급",
+    "very_easy": "아주 쉬움",
+    "easy": "쉬움",
+    "medium": "보통",
+    "hard": "어려움",
+    "very_hard": "아주 어려움",
 }
 
 QUESTION_TYPES = {

@@ -40,6 +40,13 @@ class EdgeDBClient:
     def get_feedback_stats(self, question_id: str) -> dict | None:
         return self._call("get_feedback_stats", {"question_id": question_id})
 
+    def get_prompts(self, category: str = None, lang: str = "kr"):
+        """프롬프트 조회 - category와 lang으로 필터링"""
+        params = {"lang": lang}
+        if category:
+            params["category"] = category
+        return self._call("get_prompts", params) or []
+
     def adjust_difficulty(self, question_id: str, new_difficulty: str, reason: str, adjusted_by: str = "system"):
         self._call("adjust_difficulty", {
             "question_id": question_id, "new_difficulty": new_difficulty,
