@@ -109,7 +109,7 @@ class AIQuestionGenerator:
   "topic": "{self.assessment_areas[area] if area not in ['work_application', 'daily_problem_solving'] else '구체적인 직무/상황'}",
   "difficulty": "{difficulty}",
   "estimatedTime": "{time_limit}",
-  "scenario": "면접 시뮬레이션 배경 상황 설명",
+  "scenario": "문제 상황 및 배경 설명",
   "reference": {{
     "metrics": {{"paid_conv_rate": "유료 전환율 2.3%", "retention_d7": "7일 리텐션 45%"}},
     "funnel": {{"signup": "회원가입 단계별 데이터"}},
@@ -142,11 +142,11 @@ class AIQuestionGenerator:
         if area in ["work_application", "daily_problem_solving"]:
             topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화' 등)"
             area_display = f"{self.assessment_areas[area]} (구체적인 직무/상황으로 설정)"
-            task_template = "나는 현재 [구체적인 직무/상황] 면접에 참여하고 있다. 다음 상황에서..."
+            task_template = "나는 현재 [구체적인 직무/상황] 상황에 있다. 다음 상황에서..."
         else:
             topic_instruction = f"topic 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
             area_display = self.assessment_areas[area]
-            task_template = f"나는 현재 {self.assessment_areas[area]} 면접에 참여하고 있다. 다음 상황에서..."
+            task_template = f"나는 현재 {self.assessment_areas[area]} 상황에 있다. 다음 상황에서..."
         
         return f"""
 다음 조건에 맞는 AI 활용능력평가 주관식 문제를 생성해주세요:
@@ -157,8 +157,8 @@ class AIQuestionGenerator:
 사용자 추가 요구사항: {context if context else '없음'}
 
 요구사항:
-1. 실무 상황을 반영한 현실적인 문제
-2. AI를 도구로 활용하는 능력을 평가
+1. 평가 영역과 관련된 상황을 반영한 현실적인 문제
+2. AI를 활용해서 문제를 해결하는 능력을 평가하기 위한 문제
 3. 창의적 사고와 종합적 문제 해결 능력 평가
 4. {difficulty} 수준에 맞는 복잡도
 
@@ -171,7 +171,7 @@ class AIQuestionGenerator:
   "time_limit": "{time_limit}",
   "topic_summary": "주제 요약 설명",
   "title": "문제 제목",
-  "scenario": "면접 시뮬레이션 배경 + 출처",
+  "scenario": "문제 상황 및 배경 설명",
   "goal": ["1단계: 첫 번째 목표", "2단계: 두 번째 목표"],
   "task": "{task_template}",
   "reference": {{

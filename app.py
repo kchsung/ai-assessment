@@ -55,7 +55,7 @@ def init_state():
 init_state()
 
 st.title("🤖 AI 활용능력평가 문제생성 에이전트 v2.0")
-st.caption("OpenAI API + Supabase Edge Function 기반")
+st.caption("QLearn 문제 출제 에이젼트-내부용")
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 문제 생성", "📚 문제 은행", "💬 피드백 & HITL", "📊 분석 대시보드", "⚙️ 설정"])
 
