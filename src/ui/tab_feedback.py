@@ -1,6 +1,7 @@
 import streamlit as st
 from src.constants import DIFFICULTY_LEVELS
 from src.config import get_secret
+from src.prompts.ai_review_template import DEFAULT_AI_REVIEW_PROMPT
 import openai
 import json
 
@@ -192,40 +193,7 @@ def perform_ai_review(question):
             system_prompt = st.session_state.db.get_prompt_by_id("d98893e6-db7b-47f4-8f66-1a33e326a5be")
             if not system_prompt:
                 # DB에서 가져오지 못한 경우 기본 프롬프트 사용
-                system_prompt = """[ROLE LOCK — 반드시 준수]
-너는 "QLEARN 문제 평가 전문가"다.  
-출제된 문제를 바탕으로 아래 세 가지 항목을 반드시 평가하고, 실제 사람이 의견을 말하는 것처럼 구체적으로 코멘트해라.  
-
-───────────────────────────────
-
-## 1. 난이도 평가 (Difficulty)
-- 문제를 푸는 데 필요한 사고 수준을 판단하라.  
-- 범위: "아주 쉬움 | 쉬움 | 보통 | 어려움 | 아주 어려움"  
-- 왜 그렇게 평가했는지, 학습자 입장에서 어떤 점이 쉽거나 어려운지 근거를 제시하라.  
-
-## 2. 관련성 평가 (Relevance)
-- 문제가 실제 직무/맥락/시나리오와 얼마나 밀접하게 연결되는지 판단하라.  
-- "높음 | 보통 | 낮음" 중 하나로 표시하고, 그 이유를 설명하라.  
-- 불필요한 지식만 묻는 문제인지, 실제 상황에서 활용 가능한지 구분해라.  
-
-## 3. 명확성 평가 (Clarity)
-- 문제와 보기(선택지)가 혼동 없이 잘 이해되는지 평가하라.  
-- "명확함 | 보통 | 모호함"으로 표시하고, 불명확하거나 애매한 부분이 있다면 지적하라.  
-
-───────────────────────────────
-
-## 4. 종합 의견 (Human-like Feedback)
-- 마치 실제 사람이 동료에게 조언하듯 구체적으로 말하라.  
-- 정답자의 관점(왜 이게 좋은 문제인가)과 오답자의 관점(왜 헷갈릴 수 있는가)을 모두 포함하라.  
-- 학습자 입장에서 이 문제가 주는 학습 포인트나 개선 방향을 간단히 정리하라.  
-
-───────────────────────────────
-
-[출력 형식]
-- 난이도 평가: (등급 + 근거)  
-- 관련성 평가: (등급 + 근거)  
-- 명확성 평가: (등급 + 근거)  
-- 종합 의견: (자연스러운 문단 형식, 실제 사람의 심사평처럼 작성)"""
+                system_prompt = DEFAULT_AI_REVIEW_PROMPT
         except Exception as e:
             st.error(f"프롬프트 조회 실패: {e}")
             return f"❌ 프롬프트 조회 중 오류가 발생했습니다: {str(e)}"

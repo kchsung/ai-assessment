@@ -187,7 +187,8 @@ def render(st):
                             
                             # 정답 표시
                             if step.get('answer'):
-                                with st.expander("정답 확인"):
+                                show_answer = st.toggle("정답 보기", key=f"bank_answer_toggle_{step.get('step', 1)}")
+                                if show_answer:
                                     st.success(f"정답: {step['answer']}")
                 else:
                     # 단일 스텝인 경우
@@ -205,7 +206,8 @@ def render(st):
                     
                     # 정답 표시
                     if step.get('answer'):
-                        with st.expander("정답 확인"):
+                        show_answer = st.toggle("정답 보기", key="bank_answer_toggle_single")
+                        if show_answer:
                             st.success(f"정답: {step['answer']}")
             
             # 주관식 문제 상세 표시

@@ -61,7 +61,8 @@ def render(st):
                             
                             # 정답 표시
                             if step.get('answer'):
-                                with st.expander("정답 확인"):
+                                show_answer = st.toggle("정답 보기", key=f"answer_toggle_{step.get('step', 1)}")
+                                if show_answer:
                                     st.success(f"정답: {step['answer']}")
                 else:
                     # 단일 스텝인 경우
@@ -79,7 +80,8 @@ def render(st):
                     
                     # 정답 표시
                     if step.get('answer'):
-                        with st.expander("정답 확인"):
+                        show_answer = st.toggle("정답 보기", key="answer_toggle_single")
+                        if show_answer:
                             st.success(f"정답: {step['answer']}")
             
             # 주관식 문제 표시
@@ -107,7 +109,8 @@ def render(st):
             
             # 디버깅용 원문 표시
             if q.get("ai_generated") and st.session_state.get("last_raw_content"):
-                with st.expander("원문 모델 응답 (디버깅)"):
+                show_debug = st.toggle("원문 모델 응답 (디버깅)", key="debug_toggle")
+                if show_debug:
                     st.code(st.session_state.last_raw_content)
         else:
             st.info("문제를 생성하면 여기에 미리보기가 표시됩니다.")

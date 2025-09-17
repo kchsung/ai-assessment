@@ -4,6 +4,9 @@ import streamlit as st
 from openai import OpenAI
 from src.config import get_secret
 from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS
+from src.prompts.default_prompts import DEFAULT_SYSTEM_PROMPT, DEFAULT_DIFFICULTY_GUIDES, DIFFICULTY_TIME_MAPPING
+from src.prompts.multiple_choice_template import get_multiple_choice_prompt
+from src.prompts.subjective_template import get_subjective_prompt
 
 class AIQuestionGenerator:
     def __init__(self):
@@ -14,28 +17,10 @@ class AIQuestionGenerator:
         self.assessment_areas = ASSESSMENT_AREAS_DISPLAY
         self.difficulty_levels = DIFFICULTY_LEVELS
         
-        # 기본 프롬프트 템플릿
-        self.default_system_prompt = (
-            "당신은 AI 활용능력평가 전문가입니다. 실무에서 AI를 효과적으로 활용하는 능력을 평가하는 문제를 생성해주세요. "
-            "문제는 단순히 AI로 해결할 수 있는 것이 아니라, 인간의 판단력과 창의성이 필요한 것이어야 합니다."
-        )
-        
-        self.default_difficulty_guides = {
-            "very_easy": "기본 개념 이해와 단순 도구 사용 능력을 평가. 명확한 정답이 있는 문제.",
-            "easy": "기본 도구 활용과 간단한 문제 해결 능력을 평가. 단계별 접근이 가능한 문제.",
-            "medium": "복합적 문제 해결과 도구 조합 활용 능력을 평가. 여러 접근법이 가능한 문제.",
-            "hard": "전략적 사고와 시스템 설계 능력을 평가. 비즈니스 임팩트를 고려한 종합적 문제.",
-            "very_hard": "혁신적 사고와 복잡한 시스템 통합 능력을 평가. 창의적 해결책이 필요한 고도화된 문제.",
-        }
-        
-        # 난이도별 시간 제한 매핑
-        self.difficulty_time_mapping = {
-            "very_easy": "3분 이내",
-            "easy": "4분 이내", 
-            "medium": "5분 이내",
-            "hard": "7분 이내",
-            "very_hard": "10분 이내"
-        }
+        # 기본 프롬프트 템플릿 (외부 파일에서 import)
+        self.default_system_prompt = DEFAULT_SYSTEM_PROMPT
+        self.default_difficulty_guides = DEFAULT_DIFFICULTY_GUIDES
+        self.difficulty_time_mapping = DIFFICULTY_TIME_MAPPING
 
     def _get_prompts_from_db(self, area: str, difficulty: str, question_type: str):
         """데이터베이스에서 프롬프트 조회"""
@@ -87,54 +72,16 @@ class AIQuestionGenerator:
             topic_instruction = f"topic 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
             area_display = self.assessment_areas[area]
         
-        return f"""
-다음 조건에 맞는 AI 활용능력평가 객관식 문제를 생성해주세요:
-
-평가 영역: {area_display}
-난이도: {self.difficulty_levels[difficulty]} - {guide}
-시간 제한: {time_limit}
-사용자 추가 요구사항: {context if context else '없음'}
-
-요구사항:
-1. 평가 영역과 관련된 상황을 반영한 현실적인 문제
-2. AI를 활용해서 문제를 해결하는 능력을 평가하기 위한 문제
-3. 단계별 접근이 필요한 문제
-4. {difficulty} 수준에 맞는 복잡도
-
-다음 JSON 형식으로 응답해주세요:
-{{
-  "lang": "kr",
-  "category": "{self.assessment_areas[area]}",
-  "problemTitle": "문제 제목",
-  "topic": "{self.assessment_areas[area] if area not in ['work_application', 'daily_problem_solving'] else '구체적인 직무/상황'}",
-  "difficulty": "{difficulty}",
-  "estimatedTime": "{time_limit}",
-  "scenario": "문제 상황 및 배경 설명",
-  "reference": {{
-    "metrics": {{"paid_conv_rate": "유료 전환율 2.3%", "retention_d7": "7일 리텐션 45%"}},
-    "funnel": {{"signup": "회원가입 단계별 데이터"}},
-    "user_feedback": [{{"tag": "사용자 피드백 태그", "content": "피드백 내용"}}],
-    "competitor_strategy": {{"campaign": {{"A": "경쟁사 A 전략", "B": "경쟁사 B 전략"}}}}
-  }},
-  "steps": [
-    {{
-      "step": 1,
-      "title": "맥락 파악",
-      "question": "핵심 질문 내용",
-      "ref_paths": ["ref.metrics.paid_conv_rate"],
-      "options": [
-        {{"id":"A","text":"선택지 A","feedback":"피드백 A","weight":0.85,"ref_paths":["ref.funnel.signup"]}},
-        {{"id":"B","text":"선택지 B","feedback":"피드백 B","weight":0.75,"ref_paths":["ref.user_feedback[0].tag"]}},
-        {{"id":"C","text":"선택지 C","feedback":"피드백 C","weight":1.0,"ref_paths":["ref.metrics.retention_d7"]}},
-        {{"id":"D","text":"선택지 D","feedback":"피드백 D","weight":0.65,"ref_paths":["ref.competitor_strategy.campaign.B"]}}
-      ],
-      "answer":"C"
-    }}
-  ]
-}}
-
-중요: {topic_instruction}
-"""
+        return get_multiple_choice_prompt(
+            area_display=area_display,
+            difficulty_display=self.difficulty_levels[difficulty],
+            guide=guide,
+            time_limit=time_limit,
+            context=context,
+            assessment_area=self.assessment_areas[area],
+            topic_instruction=topic_instruction,
+            difficulty=difficulty
+        )
 
     def _build_subjective_prompt(self, area: str, difficulty: str, guide: str, time_limit: str, context: str):
         """주관식 문제 생성 프롬프트"""
@@ -148,59 +95,17 @@ class AIQuestionGenerator:
             area_display = self.assessment_areas[area]
             task_template = f"나는 현재 {self.assessment_areas[area]} 상황에 있다. 다음 상황에서..."
         
-        return f"""
-다음 조건에 맞는 AI 활용능력평가 주관식 문제를 생성해주세요:
-
-평가 영역: {area_display}
-난이도: {self.difficulty_levels[difficulty]} - {guide}
-시간 제한: {time_limit}
-사용자 추가 요구사항: {context if context else '없음'}
-
-요구사항:
-1. 평가 영역과 관련된 상황을 반영한 현실적인 문제
-2. AI를 활용해서 문제를 해결하는 능력을 평가하기 위한 문제
-3. 창의적 사고와 종합적 문제 해결 능력 평가
-4. {difficulty} 수준에 맞는 복잡도
-
-다음 JSON 형식으로 응답해주세요:
-{{
-  "lang": "kr",
-  "category": "{self.assessment_areas[area]}",
-  "topic": "{self.assessment_areas[area] if area not in ['work_application', 'daily_problem_solving'] else '구체적인 직무/상황'}",
-  "difficulty": "{difficulty}",
-  "time_limit": "{time_limit}",
-  "topic_summary": "주제 요약 설명",
-  "title": "문제 제목",
-  "scenario": "문제 상황 및 배경 설명",
-  "goal": ["1단계: 첫 번째 목표", "2단계: 두 번째 목표"],
-  "task": "{task_template}",
-  "reference": {{
-    "metrics": {{"key_metric": "핵심 지표 설명"}},
-    "funnel": {{"stage": "단계별 데이터"}},
-    "user_feedback": [{{"type": "피드백 유형", "content": "피드백 내용"}}],
-    "competitor_strategy": {{"approach": "경쟁사 접근법"}}
-  }},
-  "first_question": ["첫 번째 질문", "두 번째 질문", "세 번째 질문"],
-  "requirements": ["요구사항 1", "요구사항 2"],
-  "constraints": ["개인정보 포함 금지", "금칙어 사용 금지"],
-  "guide": {{
-    "method": "Search–Compare–Choose–Verify",
-    "alternatives": [
-      "Rapid Research & Snapshot",
-      "Iterative Q-A Refinement", 
-      "Decompose-Solve-Recombine"
-    ]
-  }},
-  "evaluation": [
-    "목표 적합성·정확성 30%",
-    "근거·출처 신뢰도 25%",
-    "실행 가능성·구체성 25%",
-    "명료성·형식 준수 20%"
-  ]
-}}
-
-중요: {topic_instruction}
-"""
+        return get_subjective_prompt(
+            area_display=area_display,
+            difficulty_display=self.difficulty_levels[difficulty],
+            guide=guide,
+            time_limit=time_limit,
+            context=context,
+            assessment_area=self.assessment_areas[area],
+            topic_instruction=topic_instruction,
+            task_template=task_template,
+            difficulty=difficulty
+        )
 
     def generate_with_ai(self, area: str, difficulty: str, question_type: str, context: str = ""):
         # 데이터베이스에서 프롬프트 조회 시도
@@ -212,10 +117,20 @@ class AIQuestionGenerator:
             user_prompt = db_user_prompt
             if context:
                 user_prompt = user_prompt.replace("추가 맥락: 없음", f"추가 맥락: {context}")
+            st.info("📋 데이터베이스 프롬프트 사용 중")
         else:
             # 기본 프롬프트 사용
             system_prompt = self.default_system_prompt
             user_prompt = self._build_user_prompt(area, difficulty, question_type, context)
+            st.info("📝 기본 프롬프트 사용 중")
+            
+        # 디버깅용 프롬프트 표시
+        with st.expander("🔍 사용된 프롬프트 확인 (디버깅)", expanded=False):
+            st.markdown("**System Prompt:**")
+            st.text(system_prompt)
+            st.markdown("**User Prompt:**")
+            st.text(user_prompt)
+            
         try:
             # 세션 상태에서 선택된 모델 가져오기 (기본값: gpt-5-nano)
             model = st.session_state.get("selected_model", "gpt-5-nano")
