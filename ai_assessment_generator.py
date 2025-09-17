@@ -589,7 +589,7 @@ def main():
                 st.info(f"**문제 ID**: {q['id']}  \n**평가 영역**: {q['area']}  \n**난이도**: {q['difficulty']}  \n**유형**: {q['type']}")
                 st.markdown("### 문제")
                 # JSON이 그대로 출력되는 경우를 처리
-                question_text = q["question"]
+                question_text = q.get("question", q.get("question_text", "문제 내용 없음"))
                 if question_text.startswith('{') and '"question":' in question_text:
                     # JSON 파싱 시도
                     try:
@@ -659,7 +659,9 @@ def main():
                 with st.expander(f"{idx+1}. [{q['difficulty']}] {q['area']} - {q['id'][:15]}..."):
                     c1, c2 = st.columns([3, 1])
                     with c1:
-                        st.markdown(f"**문제**: {q['question'][:200]}...")
+                        # question 필드가 없을 수 있으므로 안전하게 처리
+                        question_text = q.get('question', q.get('question_text', '문제 내용 없음'))
+                        st.markdown(f"**문제**: {question_text[:200]}...")
                         stats = st.session_state.db.get_feedback_stats(q["id"])
                         if stats:
                             st.markdown(
@@ -685,7 +687,8 @@ def main():
             if st.session_state.get("feedback_question"):
                 q = st.session_state.feedback_question
                 st.info(f"문제 ID: {q['id']}")
-                st.markdown(f"**문제**: {q['question'][:200]}...")
+                question_text = q.get('question', q.get('question_text', '문제 내용 없음'))
+                st.markdown(f"**문제**: {question_text[:200]}...")
                 d = st.slider("난이도 평가", 1, 5, 3)
                 r = st.slider("관련성 평가", 1, 5, 3)
                 c = st.slider("명확성 평가", 1, 5, 3)
