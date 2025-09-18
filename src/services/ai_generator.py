@@ -136,8 +136,8 @@ class AIQuestionGenerator:
             st.info("📝 기본 프롬프트 사용 중")
             
         try:
-            # 세션 상태에서 선택된 모델 가져오기 (기본값: gpt-5-nano)
-            model = st.session_state.get("selected_model", "gpt-5-nano")
+            # 세션 상태에서 선택된 모델 가져오기 (기본값: gpt-5)
+            model = st.session_state.get("selected_model", "gpt-5")
             
             resp = self.client.chat.completions.create(
                 model=model,

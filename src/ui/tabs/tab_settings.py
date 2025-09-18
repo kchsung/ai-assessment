@@ -17,7 +17,7 @@ def render(st):
         }
         
         # 현재 선택된 모델 (세션 상태에서 가져오기)
-        current_model = st.session_state.get("selected_model", "gpt-5-nano")
+        current_model = st.session_state.get("selected_model", "gpt-5")
         
         # 모델 선택
         selected_model = st.selectbox(
@@ -46,7 +46,7 @@ def render(st):
         api_key = get_secret("OPENAI_API_KEY")
         
         config_info = {
-            "selected_model": st.session_state.get("selected_model", "gpt-5-nano"),
+            "selected_model": st.session_state.get("selected_model", "gpt-5"),
             "api_configured": "✅ 설정됨" if st.session_state.get("generator") else "❌ 미설정",
             "environment": "☁️ Streamlit Cloud" if is_streamlit_cloud() else "💻 로컬",
             "api_key_source": "🔐 secrets" if api_key and "sk-proj-" in str(api_key) else "❌ 없음"

@@ -202,7 +202,7 @@ def perform_ai_review(question):
         
         # AI 호출
         response = client.chat.completions.create(
-            model=st.session_state.get("selected_model", "gpt-5-nano"),
+            model=st.session_state.get("selected_model", "gpt-5"),
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
