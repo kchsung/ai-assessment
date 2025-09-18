@@ -17,6 +17,7 @@ def get_multiple_choice_prompt(area_display: str, difficulty_display: str, guide
 2. AI를 활용해서 문제를 해결하는 능력을 평가하기 위한 문제
 3. 단계별 접근이 필요한 문제
 4. {difficulty_display} 수준에 맞는 복잡도
+5. 복잡도에 따른 step1 ~ step9 구성, 복잡도가 높을 수록 스탭이 늘어나야 함
 
 다음 JSON 형식으로 응답해주세요:
 {{
