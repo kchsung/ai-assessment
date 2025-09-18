@@ -41,6 +41,12 @@ def render(st):
             # 객관식 문제 표시
             if q.get("type") == "multiple_choice" and meta.get("steps"):
                 st.markdown("### 📋 객관식 문제")
+                
+                # 시나리오를 마크다운으로 표시
+                if meta.get("scenario"):
+                    st.markdown("**📖 문제 상황**")
+                    st.markdown(meta["scenario"])
+                
                 steps = meta["steps"]
                 
                 # 스텝별 탭으로 표시

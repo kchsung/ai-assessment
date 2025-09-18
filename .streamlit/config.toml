@@ -1,0 +1,13 @@
+[server]
+# 파일 감시 기능 비활성화 (Windows에서 경로 에러 방지)
+fileWatcherType = "none"
+
+[runner]
+# 자동 재시작 비활성화
+fastReruns = false
+
+[logger]
+# 로그 레벨 조정
+level = "error"
+
+

@@ -6,6 +6,7 @@ ASSESSMENT_AREAS_DISPLAY = {
     "daily_problem_solving": "일상 문제",
     "tool_utilization": "AI 도구 활용능력",
     "ethics_security": "AI 윤리/보안 인식",
+    "pharma_distribution": "태전제약유통",
 }
 
 # 데이터베이스 저장용 (영어)
@@ -16,6 +17,7 @@ ASSESSMENT_AREAS = {
     "daily_problem_solving": "Life",
     "tool_utilization": "AI Tool",
     "ethics_security": "AI Security",
+    "pharma_distribution": "Pharma Distribution",
 }
 
 DIFFICULTY_LEVELS = {

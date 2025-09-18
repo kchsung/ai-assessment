@@ -36,7 +36,18 @@ class AIQuestionGenerator:
             
             # system 프롬프트 조합
             system_prompt = self.default_system_prompt
-            if area_prompts:
+            
+            # pharma_distribution의 경우 특정 ID의 프롬프트 사용
+            if area == "pharma_distribution":
+                try:
+                    pharma_prompt = db.get_prompt_by_id("2731d7c8-32d5-45d2-bef9-52ad68510bb8")
+                    if pharma_prompt:
+                        system_prompt = pharma_prompt  # 기본 프롬프트 대신 특정 프롬프트 사용
+                    else:
+                        st.warning("태전제약유통 전용 프롬프트를 찾을 수 없습니다. 기본 프롬프트를 사용합니다.")
+                except Exception as e:
+                    st.warning(f"태전제약유통 전용 프롬프트 조회 실패: {e}. 기본 프롬프트를 사용합니다.")
+            elif area_prompts:
                 system_prompt += f"\n\n평가 영역 특화 지침:\n{area_prompts[0]['prompt_text']}"
             
             # user 프롬프트 조합
@@ -64,9 +75,9 @@ class AIQuestionGenerator:
     
     def _build_multiple_choice_prompt(self, area: str, difficulty: str, guide: str, time_limit: str, context: str):
         """객관식 문제 생성 프롬프트"""
-        # work_application과 daily_problem_solving의 경우 topic을 동적으로 설정
-        if area in ["work_application", "daily_problem_solving"]:
-            topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화' 등)"
+        # work_application, daily_problem_solving, pharma_distribution의 경우 topic을 동적으로 설정
+        if area in ["work_application", "daily_problem_solving", "pharma_distribution"]:
+            topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀' 등)"
             area_display = f"{self.assessment_areas[area]} (구체적인 직무/상황으로 설정)"
         else:
             topic_instruction = f"topic 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
@@ -85,9 +96,9 @@ class AIQuestionGenerator:
 
     def _build_subjective_prompt(self, area: str, difficulty: str, guide: str, time_limit: str, context: str):
         """주관식 문제 생성 프롬프트"""
-        # work_application과 daily_problem_solving의 경우 topic을 동적으로 설정
-        if area in ["work_application", "daily_problem_solving"]:
-            topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화' 등)"
+        # work_application, daily_problem_solving, pharma_distribution의 경우 topic을 동적으로 설정
+        if area in ["work_application", "daily_problem_solving", "pharma_distribution"]:
+            topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀' 등)"
             area_display = f"{self.assessment_areas[area]} (구체적인 직무/상황으로 설정)"
             task_template = "나는 현재 [구체적인 직무/상황] 상황에 있다. 다음 상황에서..."
         else:
