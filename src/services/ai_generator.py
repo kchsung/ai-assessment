@@ -146,7 +146,14 @@ class AIQuestionGenerator:
             )
             content = resp.choices[0].message.content
             m = re.search(r"\{[\s\S]*\}", content or "")
-            qdata = json.loads(m.group()) if m else {"title": content or ""}
+            if m:
+                # JSON에서 trailing comma 제거
+                json_str = m.group()
+                # 배열과 객체의 trailing comma 제거
+                json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+                qdata = json.loads(json_str)
+            else:
+                qdata = {"title": content or ""}
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             
             # 새로운 JSON 포맷에 맞게 데이터 구조 변환
