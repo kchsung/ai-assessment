@@ -63,6 +63,44 @@ class AIQuestionGenerator:
             st.warning(f"프롬프트 조회 실패, 기본 프롬프트 사용: {e}")
             return None, None
 
+    def _build_system_prompt(self):
+        """시스템 프롬프트를 동적으로 구성"""
+        base_prompt = self.default_system_prompt
+        
+        # 난이도별 평가 기준 추가
+        difficulty_guides = "\n\n난이도별 평가 기준:\n"
+        for key, guide in self.default_difficulty_guides.items():
+            difficulty_name = {
+                "very_easy": "아주 쉬움",
+                "easy": "쉬움", 
+                "medium": "보통",
+                "hard": "어려움",
+                "very_hard": "매우 어려움"
+            }.get(key, key)
+            difficulty_guides += f"- {difficulty_name}: {guide}\n"
+        
+        # 난이도별 시간 제한 추가
+        time_mapping = "\n난이도별 시간 제한:\n"
+        for key, time_limit in self.difficulty_time_mapping.items():
+            difficulty_name = {
+                "very_easy": "아주 쉬움",
+                "easy": "쉬움",
+                "medium": "보통", 
+                "hard": "어려움",
+                "very_hard": "매우 어려움"
+            }.get(key, key)
+            time_mapping += f"- {difficulty_name}: {time_limit}\n"
+        
+        # 스텝 구성 규칙 추가
+        step_rules = "\n스텝 구성 규칙:\n"
+        step_rules += "- 아주 쉬움: 1~2 스텝\n"
+        step_rules += "- 쉬움: 2~3 스텝\n"
+        step_rules += "- 보통: 3~5 스텝\n"
+        step_rules += "- 어려움: 5~7 스텝\n"
+        step_rules += "- 매우 어려움: 7~9 스텝"
+        
+        return base_prompt + difficulty_guides + time_mapping + step_rules
+
     def _build_user_prompt(self, area: str, difficulty: str, question_type: str, context: str = ""):
         """기본 user 프롬프트 구성 - 새로운 JSON 포맷 지원"""
         guide = self.default_difficulty_guides[difficulty]
@@ -118,22 +156,27 @@ class AIQuestionGenerator:
             difficulty=difficulty
         )
 
-    def generate_with_ai(self, area: str, difficulty: str, question_type: str, context: str = ""):
+    def generate_with_ai(self, area: str, difficulty: str, question_type: str, user_prompt_extra: str = "", system_prompt_extra: str = ""):
         # 데이터베이스에서 프롬프트 조회 시도
         db_system_prompt, db_user_prompt = self._get_prompts_from_db(area, difficulty, question_type)
         
         # 데이터베이스 프롬프트가 있으면 사용, 없으면 기본 프롬프트 사용
         if db_system_prompt and db_user_prompt:
-            system_prompt = db_system_prompt
+            # 데이터베이스 시스템 프롬프트에 난이도 기준 추가
+            system_prompt = db_system_prompt + "\n\n" + self._build_system_prompt().split("난이도별 평가 기준:")[1]
             user_prompt = db_user_prompt
-            if context:
-                user_prompt = user_prompt.replace("추가 맥락: 없음", f"추가 맥락: {context}")
             st.info("📋 데이터베이스 프롬프트 사용 중")
         else:
             # 기본 프롬프트 사용
-            system_prompt = self.default_system_prompt
-            user_prompt = self._build_user_prompt(area, difficulty, question_type, context)
+            system_prompt = self._build_system_prompt()
+            user_prompt = self._build_user_prompt(area, difficulty, question_type, "")
             st.info("📝 기본 프롬프트 사용 중")
+        
+        # 사용자가 입력한 추가 프롬프트들을 기존 프롬프트에 추가
+        if system_prompt_extra:
+            system_prompt = system_prompt + "\n\n[사용자 추가 요구사항]\n" + system_prompt_extra
+        if user_prompt_extra:
+            user_prompt = user_prompt + "\n\n[사용자 추가 요구사항]\n" + user_prompt_extra
             
         try:
             # 세션 상태에서 선택된 모델 가져오기 (기본값: gpt-5)
