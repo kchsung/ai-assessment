@@ -5,7 +5,7 @@ OpenAI API와 Supabase Edge Function을 활용한 지능형 문제 생성 시스
 ## 🚀 기능
 
 - **AI 문제 생성**: GPT-5 시리즈 모델을 활용한 자동 문제 생성
-- **모델 선택**: gpt-5, gpt-5-nano, gpt-5-mini 중 선택 가능
+- **모델 선택**: gpt-5 (기본), gpt-5-nano, gpt-5-mini 중 선택 가능
 - **문제 은행**: 생성된 문제들을 체계적으로 관리
 - **피드백 시스템**: Human-in-the-Loop 기반 난이도 조정
 - **분석 대시보드**: 문제별 통계 및 시각화

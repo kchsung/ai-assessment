@@ -145,6 +145,10 @@ class AIQuestionGenerator:
                           {"role":"user","content":user_prompt}]
             )
             content = resp.choices[0].message.content
+            # Streamlit 상태값 제거 (key로 시작하는 패턴 제거)
+            if content:
+                content = re.sub(r'key\w+\s*', '', content)
+            
             m = re.search(r"\{[\s\S]*\}", content or "")
             if m:
                 # JSON에서 trailing comma 제거

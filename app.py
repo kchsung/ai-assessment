@@ -12,6 +12,7 @@ from src.ui.tabs.tab_bank import render as render_bank
 from src.ui.tab_feedback import render as render_feedback
 from src.ui.tabs.tab_dashboard import render as render_dashboard
 from src.ui.tabs.tab_settings import render as render_settings
+from src.ui.tabs.tab_auto_generate import render as render_auto_generate
 
 
 st.set_page_config(page_title="AI 활용능력평가 에이전트 v2.0", page_icon="🤖", layout="wide")
@@ -141,7 +142,7 @@ st.title("🤖 AI 활용능력평가 문제생성 에이전트 v2.0")
 st.caption("QLearn 문제 출제 에이젼트-내부용")
 
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 문제 생성", "📚 문제 은행", "💬 피드백 & HITL", "📊 분석 대시보드", "⚙️ 설정"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📝 문제 생성", "📚 문제 은행", "💬 피드백 & HITL", "📊 분석 대시보드", "🤖 문제 자동생성", "⚙️ 설정"])
 
 with tab1:
     render_create(st)
@@ -152,4 +153,6 @@ with tab3:
 with tab4:
     render_dashboard(st)
 with tab5:
+    render_auto_generate(st)
+with tab6:
     render_settings(st)
