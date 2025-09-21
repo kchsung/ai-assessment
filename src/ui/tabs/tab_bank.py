@@ -46,7 +46,11 @@ def render(st):
     
     # 초기 로드 시 전체 문제 표시
     if not st.session_state.get("filtered_questions"):
-        st.session_state.filtered_questions = st.session_state.db.get_questions({})
+        if st.session_state.db is None:
+            st.error("데이터베이스 연결이 초기화되지 않았습니다. Edge Function 설정을 확인하세요.")
+            st.session_state.filtered_questions = []
+        else:
+            st.session_state.filtered_questions = st.session_state.db.get_questions({})
 
     # 좌우 분할 레이아웃
     col_left, col_right = st.columns([1, 2])

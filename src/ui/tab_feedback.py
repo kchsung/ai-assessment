@@ -6,6 +6,11 @@ import openai
 import json
 
 def render(st):
+    # DB 연결 체크
+    if st.session_state.db is None:
+        st.error("데이터베이스 연결이 초기화되지 않았습니다. Edge Function 설정을 확인하세요.")
+        return
+    
     # 문제 선택 (통합된 인터페이스)
     all_q = st.session_state.db.get_questions()
     if not all_q:
