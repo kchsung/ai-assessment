@@ -113,24 +113,8 @@ def init_state():
         supabase_key = get_secret("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
         
         if not edge_url or not edge_token:
-            st.error("🚨 **Edge Function 설정이 필요합니다**")
-            st.markdown("""
-            Streamlit Cloud에서 앱을 실행하려면 다음 설정이 필요합니다:
-            
-            **Secrets 탭에서 설정해야 할 값들:**
-            - `EDGE_FUNCTION_URL`: Supabase Edge Function URL
-            - `EDGE_SHARED_TOKEN`: Edge Function 공유 토큰
-            - `SUPABASE_ANON_KEY`: Supabase 익명 키
-            - `OPENAI_API_KEY`: OpenAI API 키
-            
-            **설정 방법:**
-            1. Streamlit Cloud 앱 페이지에서 "Manage app" 클릭
-            2. "Secrets" 탭 선택
-            3. 위의 키-값 쌍들을 추가
-            4. 앱 재배포
-            
-            설정 후 앱을 새로고침하세요.
-            """)
+            st.error("🚨 Edge Function 설정이 필요합니다")
+            st.info("Streamlit Cloud Secrets에서 EDGE_FUNCTION_URL과 EDGE_SHARED_TOKEN을 설정하세요.")
             st.stop()
         
         st.session_state.db = EdgeDBClient(
