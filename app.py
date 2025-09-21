@@ -115,14 +115,20 @@ def init_state():
         if not edge_url or not edge_token:
             st.error("🚨 Edge Function 설정이 필요합니다")
             st.info("Streamlit Cloud Secrets에서 EDGE_FUNCTION_URL과 EDGE_SHARED_TOKEN을 설정하세요.")
-            st.stop()
+            st.session_state.db = None
+            return
         
-        st.session_state.db = EdgeDBClient(
-            base_url=edge_url,
-            token=edge_token,
-            supabase_anon=supabase_key,
-        )
-        print("✅ Edge Function 초기화 완료")
+        try:
+            st.session_state.db = EdgeDBClient(
+                base_url=edge_url,
+                token=edge_token,
+                supabase_anon=supabase_key,
+            )
+            print("✅ Edge Function 초기화 완료")
+        except Exception as e:
+            st.error(f"Edge Function 초기화 실패: {e}")
+            st.session_state.db = None
+            return
 
     if "generator" not in st.session_state:
         try:

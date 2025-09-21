@@ -25,6 +25,9 @@ def render(st):
                 if st.session_state.generator is None:
                     st.error("AI 생성기가 초기화되지 않았습니다. API 키를 확인하세요.")
                     return
+                if st.session_state.db is None:
+                    st.error("데이터베이스 연결이 초기화되지 않았습니다. Edge Function 설정을 확인하세요.")
+                    return
                 q = st.session_state.generator.generate_with_ai(area, difficulty, qtype, user_prompt, system_prompt)
                 if q and st.session_state.db.save_question(q):
                     st.success("문제가 저장되었습니다!")
