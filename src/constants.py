@@ -7,6 +7,7 @@ ASSESSMENT_AREAS_DISPLAY = {
     "tool_utilization": "AI 도구 활용능력",
     "ethics_security": "AI 윤리/보안 인식",
     "pharma_distribution": "태전제약유통",
+    "learning_concept": "학습-개념이해",
 }
 
 # 데이터베이스 저장용 (영어)
@@ -18,6 +19,7 @@ ASSESSMENT_AREAS = {
     "tool_utilization": "AI Tool",
     "ethics_security": "AI Security",
     "pharma_distribution": "Pharma Distribution",
+    "learning_concept": "Learning Concept",
 }
 
 DIFFICULTY_LEVELS = {
