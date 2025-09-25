@@ -40,7 +40,12 @@ class AIQuestionGenerator:
             # pharma_distribution의 경우 특정 ID의 프롬프트 사용
             if area == "pharma_distribution":
                 try:
-                    pharma_prompt = db.get_prompt_by_id("2731d7c8-32d5-45d2-bef9-52ad68510bb8")
+                    # subjective 문제 유형일 때는 특정 프롬프트 ID 사용
+                    if question_type == "subjective":
+                        pharma_prompt = db.get_prompt_by_id("1b89bce9-1916-4677-b520-87c7ec532524")
+                    else:
+                        pharma_prompt = db.get_prompt_by_id("2731d7c8-32d5-45d2-bef9-52ad68510bb8")
+                    
                     if pharma_prompt:
                         system_prompt = pharma_prompt  # 기본 프롬프트 대신 특정 프롬프트 사용
                     else:
