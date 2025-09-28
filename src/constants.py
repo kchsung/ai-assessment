@@ -8,18 +8,20 @@ ASSESSMENT_AREAS_DISPLAY = {
     "ethics_security": "AI 윤리/보안 인식",
     "pharma_distribution": "태전제약유통",
     "learning_concept": "학습-개념이해",
+    "news": "뉴스/시사",  # 추가 카테고리
 }
 
-# 데이터베이스 저장용 (영어)
+# 데이터베이스 저장용 (영어) - Supabase category enum 값과 일치
 ASSESSMENT_AREAS = {
-    "ai_basics": "Basic AI",
-    "prompt_engineering": "Prompt",
-    "work_application": "Interview",
-    "daily_problem_solving": "Life",
-    "tool_utilization": "AI Tool",
-    "ethics_security": "AI Security",
-    "pharma_distribution": "Pharma Distribution",
-    "learning_concept": "Learning Concept",
+    "ai_basics": "life",  # 기본값으로 life 사용
+    "prompt_engineering": "life",  # 기본값으로 life 사용
+    "work_application": "interview",  # 면접 문제
+    "daily_problem_solving": "life",  # 일상 문제
+    "tool_utilization": "life",  # 기본값으로 life 사용
+    "ethics_security": "life",  # 기본값으로 life 사용
+    "pharma_distribution": "pharma_distribution",  # 올바른 enum 값
+    "learning_concept": "learning_concept",  # 올바른 enum 값
+    "news": "news",  # 뉴스/시사
 }
 
 DIFFICULTY_LEVELS = {

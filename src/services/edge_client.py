@@ -20,13 +20,23 @@ class EdgeDBClient:
         if self.supabase_anon:
             headers["authorization"] = f"Bearer {self.supabase_anon}"
 
-        resp = requests.post(self.base_url, headers=headers, json={"action": action, "params": params or {}})
+        payload = {"action": action, "params": params or {}}
+        # 디버그 정보는 로깅으로 변경 (문제 데이터 출력 방지)
+        # print(f"🚀 Edge Function 호출 - Action: {action}")
+        # print(f"📡 URL: {self.base_url}")
+        # print(f"📦 Payload: {payload}")
+        
+        resp = requests.post(self.base_url, headers=headers, json=payload)
+        # print(f"📊 Response Status: {resp.status_code}")
+        # print(f"📄 Response Text: {resp.text}")
+        
         if resp.status_code >= 400:
             raise RuntimeError(f"Edge error {resp.status_code}: {resp.text}")
         
         # JSON 파싱 시도
         try:
             data = resp.json()
+            # print(f"📋 Parsed Response: {data}")
         except ValueError as e:
             raise RuntimeError(f"Edge JSON parse error: {e}, Response: {resp.text}")
         
@@ -37,7 +47,15 @@ class EdgeDBClient:
 
     # API
     def save_question(self, q: dict) -> bool:
-        self._call("save_question", q); return True
+        try:
+            # print(f"🔍 save_question 호출됨 - ID: {q.get('id', 'N/A')}")
+            # print(f"📝 저장할 데이터: {q}")  # 문제 데이터 출력 방지
+            result = self._call("save_question", q)
+            # print(f"✅ save_question 성공: {result}")
+            return True
+        except Exception as e:
+            print(f"❌ save_question 실패: {e}")
+            raise e
 
     def get_questions(self, filters: dict | None = None):
         return self._call("get_questions", filters or {}) or []
@@ -76,3 +94,23 @@ class EdgeDBClient:
 
     def reset_database(self):
         self._call("reset_database")
+
+    # qlearn_problems 테이블 관련 메서드들
+    def save_qlearn_problem(self, problem: dict) -> bool:
+        """qlearn_problems 테이블에 문제 저장"""
+        self._call("save_qlearn_problem", problem)
+        return True
+
+    def get_qlearn_problems(self, filters: dict | None = None):
+        """qlearn_problems 테이블에서 문제 조회"""
+        return self._call("get_qlearn_problems", filters or {}) or []
+
+    def update_qlearn_problem(self, problem_id: str, updates: dict) -> bool:
+        """qlearn_problems 테이블의 문제 업데이트"""
+        self._call("update_qlearn_problem", {"problem_id": problem_id, "updates": updates})
+        return True
+
+    def update_question_review_done(self, question_id: str, review_done: bool = True) -> bool:
+        """questions 테이블의 review_done 필드 업데이트"""
+        self._call("update_question_review_done", {"question_id": question_id, "review_done": review_done})
+        return True

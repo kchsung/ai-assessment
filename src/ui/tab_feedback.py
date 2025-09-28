@@ -194,14 +194,17 @@ def perform_ai_review(question):
         
         # AI 검토 프롬프트를 DB에서 가져오기
         try:
-            # Supabase에서 프롬프트 조회
+            # Supabase에서 프롬프트 조회 (피드백용 프롬프트 ID 사용)
             system_prompt = st.session_state.db.get_prompt_by_id("d98893e6-db7b-47f4-8f66-1a33e326a5be")
             if not system_prompt:
                 # DB에서 가져오지 못한 경우 기본 프롬프트 사용
                 system_prompt = DEFAULT_AI_REVIEW_PROMPT
+                print("기본 AI 검토 프롬프트 사용")
+            else:
+                print("데이터베이스에서 피드백용 AI 검토 프롬프트 사용")
         except Exception as e:
-            st.error(f"프롬프트 조회 실패: {e}")
-            return f"❌ 프롬프트 조회 중 오류가 발생했습니다: {str(e)}"
+            print(f"프롬프트 조회 실패: {e}")
+            system_prompt = DEFAULT_AI_REVIEW_PROMPT
         
         user_prompt = f"다음 문제를 검토해주세요:\n\n{problem_content}"
         
