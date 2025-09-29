@@ -35,7 +35,7 @@ def render(st):
             "평가 영역 필터",
             options=["전체"] + list(ASSESSMENT_AREAS.keys()),
             format_func=format_review_area,
-            key="auto_review_area_filter"
+            key="auto_review_area_filter_v2"
         )
     
     with col2:
@@ -44,11 +44,11 @@ def render(st):
             "문제 유형 필터", 
             options=["전체"] + list(QUESTION_TYPES.keys()),
             format_func=lambda x: "전체" if x == "전체" else x,
-            key="auto_review_type_filter"
+            key="auto_review_type_filter_v2"
         )
     
     # 필터 적용하여 문제 가져오기
-    if st.button("🔍 문제 조회", type="primary", key="auto_review_search"):
+    if st.button("🔍 문제 조회", type="primary", key="auto_review_search_v2"):
         filters = {}
         if area_filter != "전체":
             # 한국어 키를 영어 값으로 변환
@@ -83,7 +83,7 @@ def render(st):
                 st.write(f"{i}. {question_text[:100]}{'...' if len(question_text) > 100 else ''}")
         
         # 자동 처리 시작 버튼
-        if st.button("🚀 모든 문제 자동 처리 시작", type="primary", key="auto_review_batch_start"):
+        if st.button("🚀 모든 문제 자동 처리 시작", type="primary", key="auto_review_batch_start_v2"):
             st.session_state.auto_review_batch_processing = True
             st.session_state.auto_review_batch_progress = {
                 "total": len(questions),
@@ -286,6 +286,18 @@ def map_question_to_qlearn_format(question: dict) -> dict:
     if valid_difficulty not in VALID_DIFFICULTIES:
         valid_difficulty = DEFAULT_DIFFICULTY
     
+    # 난이도별 time_limit 기본값 설정
+    time_limit_defaults = {
+        "very easy": "3분 이내",
+        "easy": "4분 이내", 
+        "normal": "5분 이내",
+        "hard": "7분 이내",
+        "very hard": "10분 이내"
+    }
+    time_limit = metadata.get("time_limit", "")
+    if not time_limit or time_limit == "":
+        time_limit = time_limit_defaults.get(valid_difficulty, "5분 이내")
+    
     # 매핑된 데이터 구성
     mapped_data = {
         "id": problem_id,
@@ -293,7 +305,7 @@ def map_question_to_qlearn_format(question: dict) -> dict:
         "category": metadata.get("category", question.get("category", "")),
         "topic": metadata.get("topic", ""),
         "difficulty": valid_difficulty,  # 변환된 difficulty 사용
-        "time_limit": metadata.get("time_limit", ""),
+        "time_limit": time_limit,
         "topic_summary": metadata.get("topic", ""),
         "title": question.get("question", metadata.get("topic", "")),
         "scenario": metadata.get("scenario", ""),
@@ -427,7 +439,7 @@ def auto_process_all_questions(st, questions):
                     st.write(f"{i}. {status_emoji} {result['question_id']}: {result['message']}")
         
         # 초기화 버튼
-        if st.button("🔄 새로 시작", key="auto_review_batch_reset"):
+        if st.button("🔄 새로 시작", key="auto_review_batch_reset_v2"):
             # 배치 처리 상태 초기화
             if "auto_review_batch_progress" in st.session_state:
                 del st.session_state.auto_review_batch_progress

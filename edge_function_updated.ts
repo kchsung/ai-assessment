@@ -100,13 +100,31 @@ async function saveQlearnProblem(supabaseClient, params) {
       return value;
     };
     
+    // 난이도별 time_limit 기본값 설정 함수
+    const getTimeLimitByDifficulty = (difficulty) => {
+      const timeLimitDefaults = {
+        "very easy": "3분 이내",
+        "easy": "4분 이내", 
+        "normal": "5분 이내",
+        "hard": "7분 이내",
+        "very hard": "10분 이내",
+        "보통": "5분 이내",  // 한국어 지원
+        "쉬움": "4분 이내",
+        "어려움": "7분 이내",
+        "아주 쉬움": "3분 이내",
+        "아주 어려움": "10분 이내"
+      };
+      return timeLimitDefaults[difficulty] || "5분 이내";
+    };
+
     // 모든 NOT NULL 필드에 기본값 제공
+    const difficulty = cleanValue(params.difficulty) || 'normal';
     const problemData = {
       lang: cleanValue(params.lang) || 'kr',
       category: cleanValue(params.category) || 'life',
       topic: cleanValue(params.topic) || '기본 주제',
-      difficulty: cleanValue(params.difficulty) || '보통',
-      time_limit: cleanValue(params.time_limit) || '5분',
+      difficulty: difficulty,
+      time_limit: cleanValue(params.time_limit) || getTimeLimitByDifficulty(difficulty),
       topic_summary: cleanValue(params.topic_summary) || '기본 주제 요약',
       title: cleanValue(params.title) || '기본 제목',
       scenario: cleanValue(params.scenario) || '기본 시나리오',
@@ -307,8 +325,44 @@ async function updateQlearnProblem(supabaseClient, params) {
       });
     }
 
+    // 난이도별 time_limit 기본값 설정 함수
+    const getTimeLimitByDifficulty = (difficulty) => {
+      const timeLimitDefaults = {
+        "very easy": "3분 이내",
+        "easy": "4분 이내", 
+        "normal": "5분 이내",
+        "hard": "7분 이내",
+        "very hard": "10분 이내",
+        "보통": "5분 이내",  // 한국어 지원
+        "쉬움": "4분 이내",
+        "어려움": "7분 이내",
+        "아주 쉬움": "3분 이내",
+        "아주 어려움": "10분 이내"
+      };
+      return timeLimitDefaults[difficulty] || "5분 이내";
+    };
+
     // JSON 필드들은 그대로 유지 (Supabase가 자동으로 JSONB로 처리)
     const updateData = { ...updates };
+    
+    // time_limit 필드가 null이거나 빈 값인 경우 난이도에 따른 기본값 설정
+    if (!updateData.time_limit || updateData.time_limit === "" || updateData.time_limit === null) {
+      // 현재 문제의 난이도를 조회하여 기본값 설정
+      const { data: currentProblem, error: fetchError } = await supabaseClient
+        .from('qlearn_problems')
+        .select('difficulty')
+        .eq('id', problem_id)
+        .single();
+      
+      if (!fetchError && currentProblem) {
+        const difficulty = currentProblem.difficulty || 'normal';
+        updateData.time_limit = getTimeLimitByDifficulty(difficulty);
+        console.log(`⏰ time_limit 기본값 설정: ${updateData.time_limit} (난이도: ${difficulty})`);
+      } else {
+        updateData.time_limit = "5분 이내"; // 기본값
+        console.log(`⏰ time_limit 기본값 설정: ${updateData.time_limit} (기본값)`);
+      }
+    }
     
     updateData.updated_at = new Date().toISOString();
 

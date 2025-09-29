@@ -37,7 +37,7 @@ def render(st):
             "평가 영역 필터",
             options=["전체"] + list(ASSESSMENT_AREAS.keys()),
             format_func=format_review_area,
-            key="tab_review_area_filter"
+            key="tab_review_area_filter_v2"
         )
     
     with col2:
@@ -46,11 +46,11 @@ def render(st):
             "문제 유형 필터", 
             options=["전체"] + list(QUESTION_TYPES.keys()),
             format_func=lambda x: "전체" if x == "전체" else x,
-            key="tab_review_type_filter"
+            key="tab_review_type_filter_v2"
         )
     
     # 필터 적용하여 문제 가져오기
-    if st.button("🔍 문제 조회", type="primary", key="tab_review_search"):
+    if st.button("🔍 문제 조회", type="primary", key="tab_review_search_v2"):
         filters = {}
         if area_filter != "전체":
             # 한국어 키를 영어 값으로 변환
@@ -92,7 +92,7 @@ def render(st):
         selected_display = st.selectbox(
             "검토할 문제 선택",
             options=list(question_options.keys()),
-            key="tab_review_question_selector"
+            key="tab_review_question_selector_v2"
         )
         
         if selected_display:
@@ -125,7 +125,7 @@ def render(st):
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("📋 매핑 데이터 확인", type="secondary", key="tab_review_mapping_confirm"):
+            if st.button("📋 매핑 데이터 확인", type="secondary", key="tab_review_mapping_confirm_v2"):
                 st.session_state.mapped_review_data = mapped_data
                 st.success("데이터 매핑이 완료되었습니다.")
         
@@ -139,7 +139,7 @@ def render(st):
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("💾 qlearn_problems 저장", type="primary", key="tab_review_save"):
+            if st.button("💾 qlearn_problems 저장", type="primary", key="tab_review_save_v2"):
                 try:
                     # 선택된 문제 정보 확인
                     selected_question = st.session_state.get("selected_review_question")
@@ -207,7 +207,7 @@ def render(st):
         
         with col2:
             # 새로 시작 버튼
-            if st.button("🔄 새로 시작", type="secondary", key="tab_review_restart"):
+            if st.button("🔄 새로 시작", type="secondary", key="tab_review_restart_v2"):
                 # 세션 상태 정리
                 if "selected_review_question" in st.session_state:
                     del st.session_state.selected_review_question
@@ -387,6 +387,18 @@ def map_question_to_qlearn_format(question: dict) -> dict:
     if valid_difficulty not in VALID_DIFFICULTIES:
         valid_difficulty = DEFAULT_DIFFICULTY
     
+    # 난이도별 time_limit 기본값 설정
+    time_limit_defaults = {
+        "very easy": "3분 이내",
+        "easy": "4분 이내", 
+        "normal": "5분 이내",
+        "hard": "7분 이내",
+        "very hard": "10분 이내"
+    }
+    time_limit = metadata.get("time_limit", "")
+    if not time_limit or time_limit == "":
+        time_limit = time_limit_defaults.get(valid_difficulty, "5분 이내")
+    
     # 매핑된 데이터 구성
     mapped_data = {
         "id": problem_id,
@@ -394,7 +406,7 @@ def map_question_to_qlearn_format(question: dict) -> dict:
         "category": metadata.get("category", question.get("category", "")),
         "topic": metadata.get("topic", ""),
         "difficulty": valid_difficulty,  # 변환된 difficulty 사용
-        "time_limit": metadata.get("time_limit", ""),
+        "time_limit": time_limit,
         "topic_summary": metadata.get("topic", ""),
         "title": question.get("question", metadata.get("topic", "")),
         "scenario": metadata.get("scenario", ""),

@@ -80,7 +80,7 @@ def render(st):
                 "평가 영역",
                 options=area_options,
                 format_func=format_area_display,
-                key="gemini_auto_review_area_filter_radio",
+                key="gemini_auto_review_area_filter_radio_v2",
                 disabled=disabled,
                 index=current_index,
                 horizontal=True
@@ -90,7 +90,7 @@ def render(st):
                 "평가 영역",
                 options=area_options,
                 format_func=format_area_display,
-                key="gemini_auto_review_area_filter_selectbox",
+                key="gemini_auto_review_area_filter_selectbox_v2",
                 disabled=disabled,
                 index=current_index
             )
@@ -108,7 +108,7 @@ def render(st):
         active_status = "비활성"  # 고정값으로 설정
     
     # 문제 가져오기 버튼
-    if st.button("📋 문제 목록 가져오기", type="primary", key="gemini_auto_review_get_problems", disabled=st.session_state.get("gemini_auto_review_running", False)):
+    if st.button("📋 문제 목록 가져오기", type="primary", key="gemini_auto_review_get_problems_v2", disabled=st.session_state.get("gemini_auto_review_running", False)):
         with st.spinner("문제 목록을 가져오는 중..."):
             try:
                 # 필터 조건 구성
@@ -148,14 +148,14 @@ def render(st):
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("🚀 개별 자동 검토 시작", type="primary", key="gemini_auto_review_start"):
+            if st.button("🚀 개별 자동 검토 시작", type="primary", key="gemini_auto_review_start_v2"):
                 # 개별 자동 검토 시작 플래그 설정
                 st.session_state.gemini_auto_review_running = True
                 st.session_state.gemini_batch_processing = False
                 st.rerun()
         
         with col2:
-            if st.button("⚡ 전체 배치 처리 시작", type="secondary", key="gemini_batch_processing_start"):
+            if st.button("⚡ 전체 배치 처리 시작", type="secondary", key="gemini_batch_processing_start_v2"):
                 # 배치 처리 시작 플래그 설정
                 st.session_state.gemini_batch_processing = True
                 st.session_state.gemini_auto_review_running = False
@@ -259,6 +259,20 @@ def render(st):
                     else:
                         st.info("📝 active 필드만 업데이트")
                     
+                    # time_limit 필드가 누락되거나 null인 경우 난이도에 따른 기본값 설정
+                    if not update_data.get("time_limit") or update_data.get("time_limit") == "":
+                        difficulty = current_problem.get("difficulty", "normal")
+                        time_limit_defaults = {
+                            "very easy": "3분 이내",
+                            "easy": "4분 이내", 
+                            "normal": "5분 이내",
+                            "hard": "7분 이내",
+                            "very hard": "10분 이내"
+                        }
+                        default_time_limit = time_limit_defaults.get(difficulty, "5분 이내")
+                        update_data["time_limit"] = default_time_limit
+                        st.info(f"⏰ time_limit 기본값 설정: {default_time_limit} (난이도: {difficulty})")
+                    
                     update_success = st.session_state.db.update_qlearn_problem(problem_id, update_data)
                     
                     if update_success:
@@ -302,7 +316,7 @@ def render(st):
         
         # 자동 검토 중지 버튼
         if st.session_state.get("gemini_auto_review_running", False):
-            if st.button("⏹️ 자동 검토 중지", type="secondary", key="gemini_auto_review_stop"):
+            if st.button("⏹️ 자동 검토 중지", type="secondary", key="gemini_auto_review_stop_v2"):
                 st.session_state.gemini_auto_review_running = False
                 st.info("⏹️ 자동 검토가 중지되었습니다.")
                 st.rerun()  # 중지 상태를 반영하기 위해 페이지 새로고침
@@ -331,7 +345,7 @@ def render(st):
                         st.error(f"❌ {result['problem_id']}: {result['message']}")
         
         # 초기화 버튼
-        if st.button("🔄 새로 시작", type="secondary", key="gemini_auto_review_reset"):
+        if st.button("🔄 새로 시작", type="secondary", key="gemini_auto_review_reset_v2"):
             if "gemini_auto_review_problems" in st.session_state:
                 del st.session_state.gemini_auto_review_problems
             if "gemini_auto_review_progress" in st.session_state:
@@ -442,6 +456,19 @@ def batch_process_all_problems(st, problems, gemini_client):
                 if corrected_data:
                     update_data.update(corrected_data)
                 
+                # time_limit 필드가 누락되거나 null인 경우 난이도에 따른 기본값 설정
+                if not update_data.get("time_limit") or update_data.get("time_limit") == "":
+                    difficulty = current_problem.get("difficulty", "normal")
+                    time_limit_defaults = {
+                        "very easy": "3분 이내",
+                        "easy": "4분 이내", 
+                        "normal": "5분 이내",
+                        "hard": "7분 이내",
+                        "very hard": "10분 이내"
+                    }
+                    default_time_limit = time_limit_defaults.get(difficulty, "5분 이내")
+                    update_data["time_limit"] = default_time_limit
+                
                 update_success = st.session_state.db.update_qlearn_problem(problem_id, update_data)
                 
                 if update_success:
@@ -508,7 +535,7 @@ def batch_process_all_problems(st, problems, gemini_client):
                     st.write(f"{i}. {status_emoji} {result['problem_id']}: {result['message']}")
         
         # 초기화 버튼
-        if st.button("🔄 새로 시작", key="batch_reset"):
+        if st.button("🔄 새로 시작", key="batch_reset_v2"):
             # 배치 처리 상태 초기화
             if "batch_progress" in st.session_state:
                 del st.session_state.batch_progress
