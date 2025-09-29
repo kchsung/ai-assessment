@@ -17,8 +17,8 @@ DIFFICULTY_LEVELS = {
 }
 
 QUESTION_TYPES = {
-    "multiple_choice": "객관식",
-    "subjective": "주관식",
+    "multiple_choice": "multiple_choice",
+    "subjective": "subjective",
 }
 
 # Supabase enum 값들 - 하드코딩 방지용
