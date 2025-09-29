@@ -42,17 +42,27 @@ class GeminiClient:
         genai.configure(api_key=api_key)
         
         # 제미나이 모델 설정
-        # gemini-2.5-pro 사용
-        model_name = get_secret("GEMINI_MODEL") or os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+        # 세션 상태에서 모델 선택, 없으면 기본값 사용
+        import streamlit as st
+        model_name = st.session_state.get("selected_gemini_model") or get_secret("GEMINI_MODEL") or os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+        
+        # 세션 상태에서 temperature 선택, 없으면 기본값 사용
+        temperature = st.session_state.get("gemini_temperature", 0.3)
         
         generation_config = genai.types.GenerationConfig(
-            temperature=0.3
+            temperature=temperature
+        )
+        
+        # ThinkingConfig 설정 (gemini-2.5-pro에서 지원)
+        thinking_config = genai.types.ThinkingConfig(
+            thinking_budget=-1,  # 무제한 사고 예산
         )
         
         try:
             self.model = genai.GenerativeModel(
                 model_name,
-                generation_config=generation_config
+                generation_config=generation_config,
+                thinking_config=thinking_config
             )
             print(f"✅ 제미나이 모델 초기화 성공: {model_name}")
         except Exception as e:
@@ -72,7 +82,8 @@ class GeminiClient:
                     print(f"🔄 대체 모델 시도: {fallback_model}")
                     self.model = genai.GenerativeModel(
                         fallback_model,
-                        generation_config=generation_config
+                        generation_config=generation_config,
+                        thinking_config=thinking_config
                     )
                     print(f"✅ 대체 모델 초기화 성공: {fallback_model}")
                     break
@@ -88,10 +99,12 @@ class GeminiClient:
     def review_content(self, system_prompt: str, user_prompt: str) -> str:
         """내용 검토를 위한 제미나이 API 호출"""
         try:
-            # 제미나이에서는 system prompt를 직접 지원하지 않으므로 user prompt에 포함
-            full_prompt = f"{system_prompt}\n\n{user_prompt}"
-            
-            response = self.model.generate_content(full_prompt)
+            # 제미나이에서는 system instruction을 지원하므로 이를 활용
+            # system_prompt를 system instruction으로, user_prompt를 user message로 분리
+            response = self.model.generate_content(
+                user_prompt,
+                system_instruction=system_prompt
+            )
             
             # 응답 디버깅 정보 출력 (문제 데이터 출력 방지를 위해 주석 처리)
             # print(f"DEBUG: 제미나이 응답 타입: {type(response)}")

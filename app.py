@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # 디버그 모드 (환경변수로 제어)
-# os.environ["DEBUG"] = "true"  # 개발 시에만 주석 해제
+os.environ["DEBUG"] = "true"  # 개발 시에만 주석 해제
 
 from src.config import get_secret, is_streamlit_cloud
 from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS, QUESTION_TYPES
