@@ -2,6 +2,7 @@ import random
 from datetime import datetime
 import streamlit as st
 from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS, QUESTION_TYPES
+# 탭 상태 관리 코드 제거
 
 
 def render(st):
@@ -13,9 +14,9 @@ def render(st):
         def format_create_area(k):
             return k
         
-        area = st.selectbox("평가 영역", options=list(ASSESSMENT_AREAS.keys()), format_func=format_create_area, key="create_area")
-        difficulty = st.selectbox("난이도", options=list(DIFFICULTY_LEVELS.keys()), format_func=lambda k: DIFFICULTY_LEVELS[k], key="create_difficulty")
-        qtype = st.selectbox("문제 유형", options=list(QUESTION_TYPES.keys()), format_func=lambda k: k, key="create_type")
+        area = st.selectbox("평가 영역", options=list(ASSESSMENT_AREAS.keys()), format_func=format_create_area, key="create_area", index=0)
+        difficulty = st.selectbox("난이도", options=list(DIFFICULTY_LEVELS.keys()), format_func=lambda k: DIFFICULTY_LEVELS[k], key="create_difficulty", index=0)
+        qtype = st.selectbox("문제 유형", options=list(QUESTION_TYPES.keys()), format_func=lambda k: k, key="create_type", index=0)
         
         # System 프롬프트 입력
         system_prompt = st.text_area("System 프롬프트", placeholder="시스템 프롬프트에 추가할 내용을 입력하세요...", help="AI에게 역할이나 행동 방식을 지시하는 시스템 프롬프트를 입력하세요")

@@ -35,7 +35,8 @@ def render(st):
             "평가 영역 필터",
             options=["전체"] + list(ASSESSMENT_AREAS.keys()),
             format_func=format_review_area,
-            key="auto_review_area_filter_v2"
+            key="auto_review_area_filter_v2",
+            index=0
         )
     
     with col2:
@@ -44,7 +45,8 @@ def render(st):
             "문제 유형 필터", 
             options=["전체"] + list(QUESTION_TYPES.keys()),
             format_func=lambda x: "전체" if x == "전체" else x,
-            key="auto_review_type_filter_v2"
+            key="auto_review_type_filter_v2",
+            index=0
         )
     
     # 필터 적용하여 문제 가져오기

@@ -13,6 +13,7 @@ except ImportError:
     GEMINI_AVAILABLE = False
     GeminiClient = None
 from src.prompts.ai_review_template import DEFAULT_AI_REVIEW_PROMPT
+# 탭 상태 관리 코드 제거
 
 def render(st):
     st.header("🤖 제미나이 자동 검토")
@@ -65,14 +66,15 @@ def render(st):
         # 자동 검토가 실행 중일 때는 평가 영역 선택 비활성화
         disabled = st.session_state.get("gemini_auto_review_running", False)
         
-        # 평가 영역 상태 초기화
-        if "gemini_auto_review_selected_area" not in st.session_state:
-            st.session_state.gemini_auto_review_selected_area = ""
+        # 평가 영역 상태는 app.py에서 초기화됨
         
-        # 현재 선택된 인덱스 계산
-        current_index = 0
-        if st.session_state.gemini_auto_review_selected_area in area_options:
-            current_index = area_options.index(st.session_state.gemini_auto_review_selected_area)
+        # 현재 선택된 인덱스 계산 (안전한 방식)
+        current_value = st.session_state.gemini_auto_review_selected_area
+        try:
+            current_index = area_options.index(current_value)
+        except (ValueError, IndexError):
+            # 세션 값이 옵션에 없으면 안전하게 첫 번째 옵션 사용
+            current_index = 0
         
         # 평가 영역 선택 (탭 이동 방지를 위해 radio 사용)
         if len(area_options) <= 5:  # 옵션이 적을 때는 radio 사용
@@ -80,7 +82,7 @@ def render(st):
                 "평가 영역",
                 options=area_options,
                 format_func=format_area_display,
-                key="gemini_auto_review_area_filter_radio_v2",
+                key="gemini_auto_review_area_filter_radio_v3",
                 disabled=disabled,
                 index=current_index,
                 horizontal=True
@@ -90,7 +92,7 @@ def render(st):
                 "평가 영역",
                 options=area_options,
                 format_func=format_area_display,
-                key="gemini_auto_review_area_filter_selectbox_v2",
+                key="gemini_auto_review_area_filter_selectbox_v3",
                 disabled=disabled,
                 index=current_index
             )
@@ -148,18 +150,18 @@ def render(st):
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("🚀 개별 자동 검토 시작", type="primary", key="gemini_auto_review_start_v2"):
+            if st.button("🚀 개별 자동 검토 시작", type="primary", key="gemini_auto_review_start_v3"):
                 # 개별 자동 검토 시작 플래그 설정
                 st.session_state.gemini_auto_review_running = True
                 st.session_state.gemini_batch_processing = False
-                st.rerun()
+                # st.rerun() 제거 - 탭 이동 방지
         
         with col2:
-            if st.button("⚡ 전체 배치 처리 시작", type="secondary", key="gemini_batch_processing_start_v2"):
+            if st.button("⚡ 전체 배치 처리 시작", type="secondary", key="gemini_batch_processing_start_v3"):
                 # 배치 처리 시작 플래그 설정
                 st.session_state.gemini_batch_processing = True
                 st.session_state.gemini_auto_review_running = False
-                st.rerun()
+                # st.rerun() 제거 - 탭 이동 방지
         
         # 배치 처리 실행
         if st.session_state.get("gemini_batch_processing", False):
@@ -167,15 +169,14 @@ def render(st):
             batch_process_all_problems(st, problems, gemini_client)
             return
         
-        # 개별 처리 진행 상황 표시
-        if "gemini_auto_review_progress" not in st.session_state:
-            st.session_state.gemini_auto_review_progress = {
-                "total": len(problems),
-                "completed": 0,
-                "success": 0,
-                "failed": 0,
-                "results": []
-            }
+        # 개별 처리 진행 상황 표시 (setdefault로 '딱 한 번만' 실행)
+        st.session_state.setdefault("gemini_auto_review_progress", {
+            "total": len(problems),
+            "completed": 0,
+            "success": 0,
+            "failed": 0,
+            "results": []
+        })
         
         progress = st.session_state.gemini_auto_review_progress
         
@@ -298,10 +299,10 @@ def render(st):
                         st.session_state.gemini_auto_review_running = False
                         st.success("🎉 모든 자동 검토가 완료되었습니다!")
                     else:
-                        # 다음 문제로 자동 진행을 위해 rerun 호출
+                        # 다음 문제로 자동 진행을 위해 rerun 호출 (자동 검토 진행 중에만)
                         import time
                         time.sleep(1)  # 1초 대기 후 다음 문제 진행
-                        st.rerun()  # 다음 문제 처리를 위해 페이지 새로고침
+                        st.rerun()  # 자동 검토 진행
                     
                 except Exception as e:
                     progress["failed"] += 1
@@ -316,10 +317,10 @@ def render(st):
         
         # 자동 검토 중지 버튼
         if st.session_state.get("gemini_auto_review_running", False):
-            if st.button("⏹️ 자동 검토 중지", type="secondary", key="gemini_auto_review_stop_v2"):
+            if st.button("⏹️ 자동 검토 중지", type="secondary", key="gemini_auto_review_stop_v3"):
                 st.session_state.gemini_auto_review_running = False
                 st.info("⏹️ 자동 검토가 중지되었습니다.")
-                st.rerun()  # 중지 상태를 반영하기 위해 페이지 새로고침
+                # st.rerun() 제거 - 탭 이동 방지
         
         # 결과 상세 보기
         if progress["results"]:
@@ -345,7 +346,7 @@ def render(st):
                         st.error(f"❌ {result['problem_id']}: {result['message']}")
         
         # 초기화 버튼
-        if st.button("🔄 새로 시작", type="secondary", key="gemini_auto_review_reset_v2"):
+        if st.button("🔄 새로 시작", type="secondary", key="gemini_auto_review_reset_v3"):
             if "gemini_auto_review_problems" in st.session_state:
                 del st.session_state.gemini_auto_review_problems
             if "gemini_auto_review_progress" in st.session_state:
@@ -354,7 +355,7 @@ def render(st):
                 del st.session_state.gemini_auto_review_running
             if "gemini_auto_review_selected_area" in st.session_state:
                 del st.session_state.gemini_auto_review_selected_area
-            st.rerun()  # 초기화 상태를 반영하기 위해 페이지 새로고침
+            # st.rerun() 제거 - 탭 이동 방지
     
     # 사용 안내
     st.markdown("---")
@@ -379,16 +380,15 @@ def render(st):
 def batch_process_all_problems(st, problems, gemini_client):
     """모든 문제를 배치로 처리하는 함수"""
     
-    # 배치 처리 상태 초기화
-    if "batch_progress" not in st.session_state:
-        st.session_state.batch_progress = {
-            "total": len(problems),
-            "completed": 0,
-            "success": 0,
-            "failed": 0,
-            "results": [],
-            "start_time": datetime.now()
-        }
+    # 배치 처리 상태 초기화 (setdefault로 '딱 한 번만' 실행)
+    st.session_state.setdefault("batch_progress", {
+        "total": len(problems),
+        "completed": 0,
+        "success": 0,
+        "failed": 0,
+        "results": [],
+        "start_time": datetime.now()
+    })
     
     progress = st.session_state.batch_progress
     
@@ -491,11 +491,11 @@ def batch_process_all_problems(st, problems, gemini_client):
                 
                 # 다음 문제 처리 또는 완료
                 if progress["completed"] < progress["total"]:
-                    st.rerun()  # 다음 문제 처리
+                    st.rerun()  # 탭 상태를 유지하면서 배치 처리 진행
                 else:
                     # 모든 처리 완료
                     st.session_state.gemini_batch_processing = False
-                    st.rerun()
+                    st.rerun()  # 탭 상태를 유지하면서 완료 상태 반영
                     
             except Exception as e:
                 progress["failed"] += 1
@@ -507,10 +507,10 @@ def batch_process_all_problems(st, problems, gemini_client):
                 progress["completed"] += 1
                 
                 if progress["completed"] < progress["total"]:
-                    st.rerun()  # 다음 문제 처리
+                    st.rerun()  # 탭 상태를 유지하면서 배치 처리 진행
                 else:
                     st.session_state.gemini_batch_processing = False
-                    st.rerun()
+                    st.rerun()  # 탭 상태를 유지하면서 완료 상태 반영
     
     else:
         # 모든 처리 완료
@@ -535,13 +535,13 @@ def batch_process_all_problems(st, problems, gemini_client):
                     st.write(f"{i}. {status_emoji} {result['problem_id']}: {result['message']}")
         
         # 초기화 버튼
-        if st.button("🔄 새로 시작", key="batch_reset_v2"):
+        if st.button("🔄 새로 시작", key="batch_reset_v3"):
             # 배치 처리 상태 초기화
             if "batch_progress" in st.session_state:
                 del st.session_state.batch_progress
             if "gemini_batch_processing" in st.session_state:
                 del st.session_state.gemini_batch_processing
-            st.rerun()
+            # st.rerun() 제거 - 탭 이동 방지
 
 def extract_json_from_text(text: str) -> dict:
     """

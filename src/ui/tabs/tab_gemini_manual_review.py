@@ -61,7 +61,8 @@ def render(st):
             "평가 영역 필터",
             options=["전체"] + list(ASSESSMENT_AREAS.keys()),
             format_func=format_review_area,
-            key="gemini_manual_review_area_filter"
+            key="gemini_manual_review_area_filter_v2",
+            index=0
         )
     
     with col2:
@@ -69,11 +70,12 @@ def render(st):
         active_filter = st.selectbox(
             "활성 상태 필터", 
             options=["전체", "비활성", "활성"],
-            key="gemini_manual_review_active_filter"
+            key="gemini_manual_review_active_filter_v2",
+            index=0
         )
     
     # 필터 적용하여 문제 가져오기
-    if st.button("🔍 문제 조회", type="primary", key="gemini_manual_review_search"):
+    if st.button("🔍 문제 조회", type="primary", key="gemini_manual_review_search_v2"):
         filters = {}
         if area_filter != "전체":
             # 한국어 키를 영어 값으로 변환
@@ -116,7 +118,7 @@ def render(st):
         selected_display = st.selectbox(
             "검토할 문제 선택",
             options=list(problem_options.keys()),
-            key="gemini_manual_review_problem_selector"
+            key="gemini_manual_review_problem_selector_v2"
         )
         
         if selected_display:
@@ -132,7 +134,7 @@ def render(st):
         st.markdown("### 2단계: 제미나이 API 내용 검토")
         
         # 세션 상태 초기화 버튼 (디버깅용)
-        if st.button("🔄 세션 상태 초기화 (디버깅)", type="secondary", key="gemini_manual_review_session_reset"):
+        if st.button("🔄 세션 상태 초기화 (디버깅)", type="secondary", key="gemini_manual_review_session_reset_v2"):
             # 모든 관련 세션 상태 초기화
             keys_to_clear = [
                 "gemini_manual_review_result", "gemini_manual_review_corrected_data", 
@@ -147,7 +149,7 @@ def render(st):
         
         selected_problem = st.session_state.selected_gemini_manual_review_problem
         
-        if st.button("🤖 제미나이로 내용 검토", type="primary", key="gemini_manual_review_gemini"):
+        if st.button("🤖 제미나이로 내용 검토", type="primary", key="gemini_manual_review_gemini_v2"):
             with st.spinner("제미나이 API로 내용을 검토 중..."):
                 try:
                     # 검토할 내용 구성
@@ -316,7 +318,7 @@ def render(st):
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("✅ 문제 활성화 (active=true)", type="primary", disabled=not review_completed, key="gemini_manual_review_activate"):
+            if st.button("✅ 문제 활성화 (active=true)", type="primary", disabled=not review_completed, key="gemini_manual_review_activate_v2"):
                 try:
                     # 선택된 문제 정보 확인
                     if not selected_problem or not selected_problem.get("id"):
@@ -396,7 +398,7 @@ def render(st):
         
         with col2:
             # 새로 시작 버튼
-            if st.button("🔄 새로 시작", type="secondary", key="gemini_manual_review_restart"):
+            if st.button("🔄 새로 시작", type="secondary", key="gemini_manual_review_restart_v2"):
                 # 세션 상태 정리
                 if "selected_gemini_manual_review_problem" in st.session_state:
                     del st.session_state.selected_gemini_manual_review_problem

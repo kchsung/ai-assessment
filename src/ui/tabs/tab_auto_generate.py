@@ -132,15 +132,7 @@ def render(st):
     
     # CSS는 우측 목록 섹션에서 inject_card_css()로 주입
     
-    # 세션 상태 초기화
-    if "auto_generate_running" not in st.session_state:
-        st.session_state.auto_generate_running = False
-    if "auto_generate_stop_requested" not in st.session_state:
-        st.session_state.auto_generate_stop_requested = False
-    if "auto_generated_questions" not in st.session_state:
-        st.session_state.auto_generated_questions = []
-    if "auto_generate_total_count" not in st.session_state:
-        st.session_state.auto_generate_total_count = 5
+    # 세션 상태는 app.py에서 초기화됨
     
     # 좌측: 설정 영역
     with st.container():
@@ -163,7 +155,8 @@ def render(st):
                 "평가 영역",
                 options=area_options,
                 format_func=format_auto_area,
-                key="tab_auto_area"
+                key="tab_auto_area",
+                index=0
             )
             
             # 난이도 선택 (랜덤 옵션 포함)
@@ -172,7 +165,8 @@ def render(st):
                 "난이도",
                 options=difficulty_options,
                 format_func=lambda x: "🎲 랜덤" if x == "랜덤" else DIFFICULTY_LEVELS[x],
-                key="tab_auto_difficulty"
+                key="tab_auto_difficulty",
+                index=0
             )
             
             # 문제 유형 선택 (랜덤 옵션 포함)
@@ -181,7 +175,8 @@ def render(st):
                 "문제 유형",
                 options=type_options,
                 format_func=lambda x: "🎲 랜덤" if x == "랜덤" else x,
-                key="tab_auto_type"
+                key="tab_auto_type",
+                index=0
             )
             
             # 사용자 추가 요구사항

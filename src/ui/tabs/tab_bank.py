@@ -1,8 +1,8 @@
 import streamlit as st
 from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS, QUESTION_TYPES
+# 탭 상태 관리 코드 제거
 
 def render(st):
-    
     # 검색 필터
     c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 2, 1])
     with c1:
@@ -12,18 +12,18 @@ def render(st):
             return v
         
         f_area = st.selectbox("평가 영역", ["전체"] + list(ASSESSMENT_AREAS.keys()), 
-                             format_func=format_bank_area, key="bank_area")
+                             format_func=format_bank_area, key="bank_area_v2", index=0)
     with c2:
         f_diff = st.selectbox("난이도", ["전체"] + list(DIFFICULTY_LEVELS.keys()), 
-                             format_func=lambda v: "전체" if v=="전체" else DIFFICULTY_LEVELS[v], key="bank_difficulty")
+                             format_func=lambda v: "전체" if v=="전체" else DIFFICULTY_LEVELS[v], key="bank_difficulty_v2", index=0)
     with c3:
         f_type = st.selectbox("유형", ["전체"] + list(QUESTION_TYPES.keys()), 
-                             format_func=lambda v: "전체" if v=="전체" else v, key="bank_type")
+                             format_func=lambda v: "전체" if v=="전체" else v, key="bank_type_v2", index=0)
     with c4:
-        search_text = st.text_input("검색어", placeholder="문제 내용으로 검색...", key="question_search_input")
+        search_text = st.text_input("검색어", placeholder="문제 내용으로 검색...", key="question_search_input_v2")
     with c5:
         st.markdown("<br>", unsafe_allow_html=True)  # 공간 추가
-        if st.button("🔍 검색", use_container_width=True):
+        if st.button("🔍 검색", use_container_width=True, key="bank_search_v2"):
             filters = {}
             if f_area != "전체": 
                 filters["category"] = ASSESSMENT_AREAS[f_area]
@@ -88,7 +88,7 @@ def render(st):
                 "문제를 선택하세요:",
                 options=list(question_options.keys()),
                 index=list(question_options.keys()).index(current_selection) if current_selection else 0,
-                key="question_selector"
+                key="question_selector_v2"
             )
             
             # 선택된 문제를 세션 상태에 저장
