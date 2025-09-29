@@ -11,6 +11,39 @@ class EdgeDBClient:
         if not self.token:
             raise RuntimeError("EDGE_SHARED_TOKEN not set")
         
+        # 연결 테스트
+        self._test_connection()
+    
+    def _test_connection(self):
+        """Edge Function 연결 테스트"""
+        try:
+            # 간단한 ping 테스트
+            headers = {
+                "content-type": "application/json",
+                "x-edge-token": self.token,
+            }
+            if self.supabase_anon:
+                headers["authorization"] = f"Bearer {self.supabase_anon}"
+            
+            payload = {"action": "ping", "params": {}}
+            
+            resp = requests.post(
+                self.base_url, 
+                headers=headers, 
+                json=payload,
+                timeout=10
+            )
+            
+            if resp.status_code >= 400:
+                raise RuntimeError(f"Edge Function 연결 실패 (HTTP {resp.status_code}): {resp.text}")
+                
+        except requests.exceptions.ConnectionError as e:
+            raise RuntimeError(f"Edge Function에 연결할 수 없습니다. URL을 확인하세요: {self.base_url}")
+        except requests.exceptions.Timeout as e:
+            raise RuntimeError(f"Edge Function 연결 시간 초과: {self.base_url}")
+        except Exception as e:
+            # ping이 실패해도 다른 액션은 시도해볼 수 있도록 경고만 출력
+            print(f"⚠️ Edge Function ping 테스트 실패: {e}")
 
     def _call(self, action: str, params: dict | None = None, timeout: int = 30, max_retries: int = 3):
         headers = {

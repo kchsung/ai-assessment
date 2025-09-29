@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # .env 파일 로드
 load_dotenv()
 
-from src.config import get_secret
+from src.config import get_secret, is_streamlit_cloud
 from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS, QUESTION_TYPES
 from src.services.edge_client import EdgeDBClient
 from src.services.ai_generator import AIQuestionGenerator
@@ -37,9 +37,22 @@ def init_state():
         edge_token = get_secret("EDGE_SHARED_TOKEN") or os.getenv("EDGE_SHARED_TOKEN")
         supabase_key = get_secret("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
         
+        # 디버깅 정보 표시 (개발 환경에서만)
+        if os.getenv("DEBUG") == "true":
+            st.write("🔍 **디버깅 정보:**")
+            st.write(f"- EDGE_FUNCTION_URL: {'✅ 설정됨' if edge_url else '❌ 누락'}")
+            st.write(f"- EDGE_SHARED_TOKEN: {'✅ 설정됨' if edge_token else '❌ 누락'}")
+            st.write(f"- SUPABASE_ANON_KEY: {'✅ 설정됨' if supabase_key else '❌ 누락'}")
+            st.write(f"- Streamlit Cloud 환경: {'✅ Cloud' if is_streamlit_cloud() else '❌ 로컬'}")
+        
         if not edge_url or not edge_token:
             st.warning("⚠️ Edge Function 설정이 필요합니다")
-            st.info("Streamlit Cloud Secrets에서 EDGE_FUNCTION_URL과 EDGE_SHARED_TOKEN을 설정하세요.")
+            st.info("**Streamlit Cloud Secrets 설정 방법:**")
+            st.code("""
+EDGE_FUNCTION_URL = "https://your-project.supabase.co/functions/v1/your-function"
+EDGE_SHARED_TOKEN = "your_shared_token_here"
+SUPABASE_ANON_KEY = "your_supabase_anon_key_here"
+            """)
             st.session_state.db = None
             return
         
@@ -52,6 +65,11 @@ def init_state():
             st.success("✅ Edge Function 초기화 완료")
         except Exception as e:
             st.error(f"❌ Edge Function 초기화 실패: {str(e)}")
+            st.error("**가능한 원인:**")
+            st.write("1. Edge Function URL이 올바르지 않음")
+            st.write("2. Edge Function Token이 유효하지 않음")
+            st.write("3. Supabase 프로젝트가 활성화되지 않음")
+            st.write("4. 네트워크 연결 문제")
             st.session_state.db = None
             return
 

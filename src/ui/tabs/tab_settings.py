@@ -62,6 +62,53 @@ def render(st):
             else:
                 st.warning("**로컬**: .streamlit/secrets.toml 또는 .env 파일에 API 키를 설정하세요")
     
+    # Streamlit Cloud 설정 가이드
+    if is_streamlit_cloud():
+        st.markdown("### ☁️ Streamlit Cloud 설정 가이드")
+        
+        with st.expander("🔧 Secrets 설정 방법", expanded=False):
+            st.markdown("""
+            **Streamlit Cloud에서 다음 secrets를 설정해야 합니다:**
+            
+            ```toml
+            # Streamlit Cloud Secrets 탭에서 설정
+            EDGE_FUNCTION_URL = "https://your-project.supabase.co/functions/v1/your-function"
+            EDGE_SHARED_TOKEN = "your_shared_token_here"
+            SUPABASE_ANON_KEY = "your_supabase_anon_key_here"
+            OPENAI_API_KEY = "your_openai_api_key_here"
+            ```
+            
+            **설정 방법:**
+            1. Streamlit Cloud 대시보드에서 앱 선택
+            2. "Settings" → "Secrets" 탭 클릭
+            3. 위의 키-값 쌍을 입력
+            4. "Save" 버튼 클릭
+            5. 앱 재배포
+            """)
+            
+            # 현재 설정 상태 확인
+            from src.config import get_secret
+            edge_url = get_secret("EDGE_FUNCTION_URL")
+            edge_token = get_secret("EDGE_SHARED_TOKEN")
+            supabase_key = get_secret("SUPABASE_ANON_KEY")
+            openai_key = get_secret("OPENAI_API_KEY")
+            
+            st.markdown("**현재 설정 상태:**")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.write(f"🔗 EDGE_FUNCTION_URL: {'✅ 설정됨' if edge_url else '❌ 누락'}")
+                st.write(f"🔑 EDGE_SHARED_TOKEN: {'✅ 설정됨' if edge_token else '❌ 누락'}")
+            
+            with col2:
+                st.write(f"🗄️ SUPABASE_ANON_KEY: {'✅ 설정됨' if supabase_key else '❌ 누락'}")
+                st.write(f"🤖 OPENAI_API_KEY: {'✅ 설정됨' if openai_key else '❌ 누락'}")
+            
+            if not all([edge_url, edge_token, supabase_key, openai_key]):
+                st.error("⚠️ 일부 필수 설정이 누락되었습니다. 위의 가이드를 따라 설정하세요.")
+            else:
+                st.success("✅ 모든 필수 설정이 완료되었습니다!")
+
     # 모델별 특징 설명
     st.markdown("### 📋 모델별 특징")
     
