@@ -4,276 +4,246 @@
 import streamlit as st
 import json
 import uuid
+import re
 from datetime import datetime
-from src.services.problem_correction_service import ProblemCorrectionService
-from src.constants import ASSESSMENT_AREAS_DISPLAY, ASSESSMENT_AREAS, QUESTION_TYPES
+from src.constants import ASSESSMENT_AREAS, QUESTION_TYPES, VALID_DIFFICULTIES, DEFAULT_DIFFICULTY, DEFAULT_DOMAIN
 
 def render(st):
-    st.header("🤖 자동 문제 검토")
-    st.caption("subjective 타입 문제를 자동으로 검토하고 교정하여 qlearn_problems 테이블에 저장합니다.")
+    st.header("🤖 자동 문제 검토(JSON)")
+    st.caption("subjective 타입 문제의 JSON 형식을 자동으로 검토하고 교정하여 qlearn_problems 테이블에 저장합니다.")
     
     # DB 연결 체크
     if st.session_state.db is None:
         st.error("데이터베이스 연결이 초기화되지 않았습니다.")
         return
     
-    # 문제 교정 서비스 초기화
-    correction_service = ProblemCorrectionService()
     
-    if not correction_service.is_available():
-        st.warning("⚠️ 제미나이 API를 사용할 수 없습니다. 자동 문제 검토 기능을 사용할 수 없습니다.")
-        if hasattr(correction_service, 'initialization_error') and correction_service.initialization_error:
-            with st.expander("오류 상세 정보"):
-                st.error(correction_service.initialization_error)
-        return
-    
-    # 1단계: 문제 가져오기 및 필터링 (수동)
-    st.markdown("### 1단계: 문제 가져오기 및 필터링")
-    st.info("💡 이 단계만 수동으로 수행합니다. 선택한 문제들은 자동으로 교정되어 저장됩니다.")
+    # 1단계: 문제 가져오기 및 필터링
+    st.markdown("### 문제 가져오기 및 필터링")
     
     # 필터링 옵션
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         # 평가 영역 필터
-        area_options = [""] + list(ASSESSMENT_AREAS_DISPLAY.keys())
-        selected_area = st.selectbox(
-            "평가 영역",
-            options=area_options,
-            format_func=lambda x: ASSESSMENT_AREAS_DISPLAY.get(x, "전체") if x else "전체",
+        def format_review_area(x):
+            if x == "전체":
+                return "전체"
+            return x
+        
+        area_filter = st.selectbox(
+            "평가 영역 필터",
+            options=["전체"] + list(ASSESSMENT_AREAS.keys()),
+            format_func=format_review_area,
             key="auto_review_area_filter"
         )
     
     with col2:
-        # 난이도 필터
-        try:
-            # questions에서 난이도 목록 추출
-            questions_result = st.session_state.db.get_questions({})
-            
-            # questions_result가 딕셔너리인지 리스트인지 확인
-            if isinstance(questions_result, dict):
-                questions = questions_result.get("questions", [])
-            else:
-                questions = questions_result if isinstance(questions_result, list) else []
-            
-            difficulties = set()
-            for question in questions:
-                if isinstance(question, dict) and "difficulty" in question:
-                    difficulties.add(question["difficulty"])
-            difficulty_options = [""] + sorted(list(difficulties))
-        except Exception as e:
-            # 기본 난이도 옵션 사용
-            print(f"난이도 옵션 추출 중 오류: {e}")
-            difficulty_options = ["", "very_easy", "easy", "medium", "hard", "very_hard"]
+        # 문제 유형 필터
+        type_filter = st.selectbox(
+            "문제 유형 필터", 
+            options=["전체"] + list(QUESTION_TYPES.keys()),
+            format_func=lambda x: "전체" if x == "전체" else x,
+            key="auto_review_type_filter"
+        )
+    
+    # 필터 적용하여 문제 가져오기
+    if st.button("🔍 문제 조회", type="primary", key="auto_review_search"):
+        filters = {}
+        if area_filter != "전체":
+            # 한국어 키를 영어 값으로 변환
+            filters["category"] = ASSESSMENT_AREAS[area_filter]
+        if type_filter != "전체":
+            filters["type"] = type_filter
         
-        selected_difficulty = st.selectbox(
-            "난이도", 
-            options=difficulty_options,
-            key="auto_review_difficulty_filter"
-        )
+        # 검토 완료되지 않은 문제만 가져오기 (review_done이 FALSE인 문제들)
+        filters["review_done"] = False  # FALSE 값으로 필터링
+            
+        questions = st.session_state.db.get_questions(filters)
+        st.session_state.auto_review_questions = questions
+        st.success(f"총 {len(questions)}개의 검토 대기 문제를 찾았습니다.")
+        
+        # 기존 선택된 문제 정보 초기화
+        if "selected_auto_review_question" in st.session_state:
+            del st.session_state.selected_auto_review_question
+        if "mapped_auto_review_data" in st.session_state:
+            del st.session_state.mapped_auto_review_data
     
-    with col3:
-        # 검토 상태 필터 (review_done = False인 문제만)
-        review_status = st.selectbox(
-            "검토 상태",
-            options=["미검토", "전체"],
-            index=0,  # 기본값: 미검토
-            key="auto_review_status_filter"
-        )
-    
-    # 문제 가져오기 버튼
-    if st.button("📋 문제 목록 가져오기", type="primary", key="auto_review_get_questions"):
-        with st.spinner("문제 목록을 가져오는 중..."):
-            try:
-                # 필터 조건 구성
-                filters = {}
-                if selected_area:
-                    filters["area"] = selected_area
-                if selected_difficulty:
-                    filters["difficulty"] = selected_difficulty
-                if review_status == "미검토":
-                    filters["review_done"] = False
-                
-                # subjective 타입만 필터링
-                filters["type"] = "subjective"
-                
-                # 문제 조회
-                questions_result = st.session_state.db.get_questions(filters)
-                
-                # questions_result가 딕셔너리인지 리스트인지 확인
-                if isinstance(questions_result, dict):
-                    questions = questions_result.get("questions", [])
-                else:
-                    questions = questions_result if isinstance(questions_result, list) else []
-                
-                if not questions:
-                    st.warning("조건에 맞는 subjective 타입 문제가 없습니다.")
-                else:
-                    st.session_state.auto_review_questions = questions
-                    st.success(f"✅ {len(questions)}개의 subjective 타입 문제를 찾았습니다.")
-                    
-            except Exception as e:
-                st.error(f"❌ 문제 목록 가져오기 실패: {str(e)}")
-    
-    # 2단계: 자동 교정 실행
+    # 조회된 문제 표시 및 자동 처리
     if "auto_review_questions" in st.session_state and st.session_state.auto_review_questions:
-        st.markdown("### 2단계: 자동 교정 실행")
-        
         questions = st.session_state.auto_review_questions
-        st.info(f"📊 총 {len(questions)}개의 subjective 타입 문제가 자동으로 교정됩니다.")
         
-        # 진행 상황 표시
-        if "auto_review_progress" not in st.session_state:
-            st.session_state.auto_review_progress = {
+        st.markdown("### 조회된 문제 목록")
+        st.info(f"📊 총 {len(questions)}개의 문제가 조회되었습니다. 모든 문제를 자동으로 처리합니다.")
+        
+        # 조회된 문제 목록 표시
+        with st.expander("조회된 문제 목록", expanded=True):
+            for i, question in enumerate(questions, 1):
+                question_text = question.get("question", "제목 없음")
+                st.write(f"{i}. {question_text[:100]}{'...' if len(question_text) > 100 else ''}")
+        
+        # 자동 처리 시작 버튼
+        if st.button("🚀 모든 문제 자동 처리 시작", type="primary", key="auto_review_batch_start"):
+            st.session_state.auto_review_batch_processing = True
+            st.session_state.auto_review_batch_progress = {
                 "total": len(questions),
                 "completed": 0,
                 "success": 0,
                 "failed": 0,
-                "results": []
+                "results": [],
+                "start_time": datetime.now()
             }
-        
-        progress = st.session_state.auto_review_progress
-        
-        # 진행률 표시
-        if progress["completed"] < progress["total"]:
-            progress_bar = st.progress(progress["completed"] / progress["total"])
-            st.caption(f"진행률: {progress['completed']}/{progress['total']} (성공: {progress['success']}, 실패: {progress['failed']})")
-        else:
-            st.success(f"✅ 모든 문제 교정 완료! (성공: {progress['success']}, 실패: {progress['failed']})")
-        
-        # 자동 교정 시작 버튼
-        if st.button("🚀 자동 교정 시작", type="primary", disabled=progress["completed"] >= progress["total"], key="auto_review_start_correction"):
-            with st.spinner("자동 교정을 진행 중..."):
-                try:
-                    # 각 문제에 대해 자동 교정 수행
-                    for i, question in enumerate(questions[progress["completed"]:], start=progress["completed"]):
-                        try:
-                            # 1. 데이터 매핑 (qlearn_problems 형식으로 변환)
-                            mapped_data = map_question_to_qlearn_format(question)
-                            
-                            # 2. 제미나이로 문제 교정
-                            question_json = json.dumps(question, ensure_ascii=False, indent=2)
-                            corrected_result = correction_service.correct_problem(
-                                problem_json=question_json,
-                                category="learning_concept"  # 기본 카테고리 사용
-                            )
-                            
-                            # 교정된 결과를 JSON으로 파싱
-                            try:
-                                corrected_data = json.loads(corrected_result)
-                                # 교정된 데이터로 매핑된 데이터 업데이트
-                                mapped_data.update(corrected_data)
-                            except json.JSONDecodeError:
-                                # JSON 파싱 실패 시 원본 데이터 사용
-                                st.warning(f"문제 {i+1}: 교정 결과 JSON 파싱 실패, 원본 데이터 사용")
-                            
-                            # 3. qlearn_problems 테이블에 교정된 문제 저장
-                            save_success = st.session_state.db.save_qlearn_problem(mapped_data)
-                            
-                            if save_success:
-                                # 저장 후 실제로 DB에서 조회되는지 확인
-                                try:
-                                    saved_problem = st.session_state.db.get_qlearn_problems({"id": mapped_data["id"]})
-                                    if saved_problem and len(saved_problem) > 0:
-                                        progress["success"] += 1
-                                        progress["results"].append({
-                                            "question_id": question["id"],
-                                            "status": "success",
-                                            "message": "교정 및 qlearn_problems 테이블 저장 완료 (DB 확인됨)"
-                                        })
-                                    else:
-                                        progress["failed"] += 1
-                                        progress["results"].append({
-                                            "question_id": question["id"],
-                                            "status": "warning",
-                                            "message": "저장 성공했지만 DB에서 조회되지 않음"
-                                        })
-                                except Exception as verify_error:
-                                    progress["success"] += 1
-                                    progress["results"].append({
-                                        "question_id": question["id"],
-                                        "status": "success",
-                                        "message": f"교정 및 qlearn_problems 테이블 저장 완료 (검증 오류: {str(verify_error)})"
-                                    })
-                            else:
-                                progress["failed"] += 1
-                                progress["results"].append({
-                                    "question_id": question["id"],
-                                    "status": "failed",
-                                    "message": "qlearn_problems 테이블 저장 실패"
-                                })
-                            
-                        except Exception as e:
-                            progress["failed"] += 1
-                            progress["results"].append({
-                                "question_id": question["id"],
-                                "status": "error",
-                                "message": f"교정 중 오류: {str(e)}"
-                            })
-                        
-                        progress["completed"] += 1
-                        
-                        # 진행률 업데이트
-                        progress_bar.progress(progress["completed"] / progress["total"])
-                        st.caption(f"진행률: {progress['completed']}/{progress['total']} (성공: {progress['success']}, 실패: {progress['failed']})")
-                        
-                        # 실시간 업데이트를 위해 rerun
-                        if progress["completed"] < progress["total"]:
-                            st.rerun()
-                    
-                    st.success("🎉 모든 자동 교정이 완료되었습니다!")
-                    
-                except Exception as e:
-                    st.error(f"❌ 자동 교정 중 오류 발생: {str(e)}")
-        
-        # 결과 상세 보기
-        if progress["results"]:
-            st.markdown("### 3단계: 교정 결과")
-            
-            # 결과 요약
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("성공", progress["success"])
-            with col2:
-                st.metric("실패", progress["failed"])
-            with col3:
-                st.metric("진행률", f"{progress['completed']}/{progress['total']}")
-            
-            # 상세 결과 표시
-            with st.expander("📋 상세 결과 보기"):
-                for result in progress["results"]:
-                    if result["status"] == "success":
-                        st.success(f"✅ {result['question_id']}: {result['message']}")
-                    elif result["status"] == "partial_success":
-                        st.warning(f"⚠️ {result['question_id']}: {result['message']}")
-                    else:
-                        st.error(f"❌ {result['question_id']}: {result['message']}")
-        
-        # 초기화 버튼
-        if st.button("🔄 새로 시작", type="secondary", key="auto_review_reset"):
-            if "auto_review_questions" in st.session_state:
-                del st.session_state.auto_review_questions
-            if "auto_review_progress" in st.session_state:
-                del st.session_state.auto_review_progress
             st.rerun()
+        
+        # 자동 배치 처리 실행
+        if st.session_state.get("auto_review_batch_processing", False):
+            auto_process_all_questions(st, questions)
+            return
     
     # 사용 안내
     st.markdown("---")
     st.markdown("### ℹ️ 사용 안내")
     st.info("""
     **자동 문제 검토 프로세스:**
-    1. **1단계 (수동)**: 문제 가져오기 및 필터링 - subjective 타입만 지원
-    2. **2단계 (자동)**: 데이터 매핑 → 제미나이 교정 → questions 테이블에 교정된 문제 저장
+    1. **1단계**: 문제 가져오기 및 필터링 - 미검토 문제만 지원
+    2. **2단계**: 자동 데이터 매핑 - 모든 조회된 문제를 qlearn_problems 형식으로 자동 변환
+    3. **3단계**: 자동 DB 저장 - 모든 매핑된 데이터를 자동으로 DB에 저장하고 원본 문제 검토상태 업데이트
     
-    **지원 기능:**
-    - subjective 타입 문제만 자동 교정
-    - learning_concept 카테고리 프롬프트 사용
-    - 실시간 진행률 표시
-    - 상세한 결과 로그
-    - 교정된 문제는 qlearn_problems 테이블에 저장
-    
-    **참고**: 교정된 문제는 qlearn_problems 테이블에 저장됩니다.
+    **참고**: 
+    - 조회된 모든 문제가 자동으로 처리됩니다.
+    - 처리된 원본 문제는 자동으로 검토완료 상태로 변경되어 중복 처리를 방지합니다.
     """)
+
+def extract_json_from_text(text: str) -> dict:
+    """
+    텍스트에서 JSON 부분을 추출합니다.
+    """
+    if not text:
+        return {}
+    
+    # 1. 먼저 전체 텍스트가 JSON인지 확인
+    try:
+        return json.loads(text.strip())
+    except json.JSONDecodeError:
+        pass
+    
+    # 2. 코드 블록(```json ... ```) 내부의 JSON 추출
+    # 더 정확한 코드 블록 패턴 (```json으로 시작하고 ```로 끝나는 부분)
+    code_block_pattern = r'```(?:json)?\s*\n?(\{.*?\})\s*\n?```'
+    code_matches = re.findall(code_block_pattern, text, re.DOTALL)
+    for match in code_matches:
+        try:
+            # 공백과 줄바꿈 정리
+            cleaned_match = match.strip()
+            return json.loads(cleaned_match)
+        except json.JSONDecodeError:
+            continue
+    
+    # 2-1. 더 간단한 코드 블록 패턴도 시도
+    simple_code_pattern = r'```json\s*(\{.*?\})\s*```'
+    simple_matches = re.findall(simple_code_pattern, text, re.DOTALL)
+    for match in simple_matches:
+        try:
+            cleaned_match = match.strip()
+            return json.loads(cleaned_match)
+        except json.JSONDecodeError:
+            continue
+    
+    # 3. 첫 번째 중괄호부터 마지막 중괄호까지 추출
+    first_brace = text.find('{')
+    last_brace = text.rfind('}')
+    
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        json_candidate = text[first_brace:last_brace + 1]
+        try:
+            return json.loads(json_candidate)
+        except json.JSONDecodeError:
+            pass
+    
+    # 4. 여러 JSON 객체가 있는 경우 가장 긴 것 선택
+    json_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
+    matches = re.findall(json_pattern, text, re.DOTALL)
+    
+    # 가장 긴 JSON 후보를 선택
+    longest_match = ""
+    for match in matches:
+        if len(match) > len(longest_match):
+            longest_match = match
+    
+    if longest_match:
+        try:
+            return json.loads(longest_match)
+        except json.JSONDecodeError:
+            pass
+    
+    # 5. 중괄호 개수를 맞춰서 JSON 추출 시도
+    brace_count = 0
+    start_idx = -1
+    
+    for i, char in enumerate(text):
+        if char == '{':
+            if brace_count == 0:
+                start_idx = i
+            brace_count += 1
+        elif char == '}':
+            brace_count -= 1
+            if brace_count == 0 and start_idx != -1:
+                json_candidate = text[start_idx:i + 1]
+                try:
+                    return json.loads(json_candidate)
+                except json.JSONDecodeError:
+                    continue
+    
+    # 6. 플레이스홀더가 있는 JSON 처리 (예: {time_limit})
+    if '{' in text and '}' in text:
+        # 플레이스홀더를 기본값으로 대체하여 JSON 파싱 시도
+        placeholder_replacements = {
+            '{time_limit}': '"5분"',
+            '{difficulty}': f'"{DEFAULT_DIFFICULTY}"',
+            '{category}': f'"{DEFAULT_DOMAIN}"',
+            '{lang}': '"kr"'
+        }
+        
+        # 첫 번째 중괄호부터 마지막 중괄호까지 추출
+        first_brace = text.find('{')
+        last_brace = text.rfind('}')
+        
+        if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+            json_candidate = text[first_brace:last_brace + 1]
+            
+            # 플레이스홀더 대체
+            for placeholder, replacement in placeholder_replacements.items():
+                json_candidate = json_candidate.replace(placeholder, replacement)
+            
+            try:
+                return json.loads(json_candidate)
+            except json.JSONDecodeError:
+                pass
+    
+    return {}
+
+def ensure_array_format(data) -> list:
+    """데이터를 올바른 배열 형식으로 변환"""
+    if data is None:
+        return []
+    
+    if isinstance(data, list):
+        # 이미 배열인 경우, 각 요소가 문자열인지 확인하고 변환
+        return [str(item) for item in data if item is not None and str(item).strip()]
+    
+    if isinstance(data, str):
+        # 문자열인 경우, JSON 파싱 시도 후 실패하면 단일 요소 배열로 변환
+        try:
+            parsed = json.loads(data)
+            if isinstance(parsed, list):
+                return [str(item) for item in parsed if item is not None and str(item).strip()]
+            else:
+                return [str(parsed)] if str(parsed).strip() else []
+        except (json.JSONDecodeError, TypeError):
+            return [data] if data.strip() else []
+    
+    # 기타 타입인 경우 문자열로 변환하여 단일 요소 배열로 반환
+    return [str(data)] if str(data).strip() else []
 
 def map_question_to_qlearn_format(question: dict) -> dict:
     """questions 테이블 데이터를 qlearn_problems 형식으로 매핑"""
@@ -287,23 +257,49 @@ def map_question_to_qlearn_format(question: dict) -> dict:
     # 메타데이터 추출
     metadata = question.get("metadata", {})
     
+    # difficulty 값 변환 (Supabase q_difficulty enum에 맞게) - 허용된 값만 사용
+    difficulty_mapping = {
+        "very_easy": "very easy",
+        "easy": "easy",
+        "medium": "normal",  # medium을 normal로 변환
+        "normal": "normal",
+        "hard": "hard",
+        "very_hard": "very hard",
+        "보통": "normal",  # 한국어 "보통"을 "normal"로 변환
+        "쉬움": "easy",
+        "어려움": "hard",
+        "아주 쉬움": "very easy",
+        "아주 어려움": "very hard",
+        "매우 어려움": "very hard",
+        "": "normal",  # 기본값
+        None: "normal"
+    }
+    
+    # Supabase q_difficulty enum 값만 허용
+    original_difficulty = question.get("difficulty", "")
+    valid_difficulty = difficulty_mapping.get(original_difficulty, DEFAULT_DIFFICULTY)
+    
+    # 최종 검증: 허용된 enum 값이 아니면 기본값으로 설정
+    if valid_difficulty not in VALID_DIFFICULTIES:
+        valid_difficulty = DEFAULT_DIFFICULTY
+    
     # 매핑된 데이터 구성
     mapped_data = {
         "id": problem_id,
         "lang": metadata.get("lang", "kr"),
-        "category": metadata.get("category", question.get("area", "")),
+        "category": metadata.get("category", question.get("category", "")),
         "topic": metadata.get("topic", ""),
-        "difficulty": question.get("difficulty", ""),
+        "difficulty": valid_difficulty,  # 변환된 difficulty 사용
         "time_limit": metadata.get("time_limit", ""),
         "topic_summary": metadata.get("topic", ""),
-        "title": metadata.get("topic", question.get("question", "")),
+        "title": question.get("question", metadata.get("topic", "")),
         "scenario": metadata.get("scenario", ""),
-        "goal": metadata.get("goal", []),
-        "first_question": metadata.get("first_question", []),
-        "requirements": metadata.get("requirements", []),
-        "constraints": metadata.get("constraints", []),
+        "goal": ensure_array_format(metadata.get("goal", [])),
+        "first_question": ensure_array_format(metadata.get("first_question", [])),
+        "requirements": ensure_array_format(metadata.get("requirements", [])),
+        "constraints": ensure_array_format(metadata.get("constraints", [])),
         "guide": metadata.get("guide", {}),
-        "evaluation": metadata.get("evaluation", []),
+        "evaluation": ensure_array_format(metadata.get("evaluation", [])),
         "task": metadata.get("task", ""),
         # created_by 필드는 제외 (UUID 오류 방지)
         "created_at": now.isoformat(),
@@ -313,3 +309,127 @@ def map_question_to_qlearn_format(question: dict) -> dict:
     }
     
     return mapped_data
+
+def auto_process_all_questions(st, questions):
+    """모든 문제를 자동으로 처리하는 함수"""
+    
+    progress = st.session_state.auto_review_batch_progress
+    
+    # 진행률 표시
+    if progress["completed"] < progress["total"]:
+        progress_bar = st.progress(progress["completed"] / progress["total"])
+        elapsed_time = datetime.now() - progress["start_time"]
+        st.caption(f"진행률: {progress['completed']}/{progress['total']} (성공: {progress['success']}, 실패: {progress['failed']}) - 경과시간: {elapsed_time}")
+        
+        # 현재 처리 중인 문제 표시
+        current_question = questions[progress["completed"]]
+        st.info(f"🔄 현재 처리 중: {current_question.get('question', '제목 없음')[:100]}...")
+        
+        # 배치 처리 실행
+        with st.spinner(f"자동 처리 중... ({progress['completed'] + 1}/{progress['total']})"):
+            try:
+                # 현재 처리할 문제
+                current_question = questions[progress["completed"]]
+                current_index = progress["completed"]
+                
+                # 1. 데이터 매핑 (qlearn_problems 형식으로 변환)
+                mapped_data = map_question_to_qlearn_format(current_question)
+                mapped_data["active"] = False
+                
+                # 2. qlearn_problems 테이블에 저장
+                save_success = st.session_state.db.save_qlearn_problem(mapped_data)
+                
+                if save_success:
+                    # 저장 성공 시 원본 문제의 review_done 상태를 True로 업데이트
+                    try:
+                        update_success = st.session_state.db.update_question_review_done(
+                            question_id=current_question["id"], 
+                            review_done=True
+                        )
+                        if update_success:
+                            progress["success"] += 1
+                            progress["results"].append({
+                                "question_id": current_question["id"],
+                                "status": "success",
+                                "message": "매핑 및 qlearn_problems 테이블 저장 완료, 원본 문제 검토상태 업데이트 완료"
+                            })
+                        else:
+                            progress["success"] += 1
+                            progress["results"].append({
+                                "question_id": current_question["id"],
+                                "status": "partial_success",
+                                "message": "매핑 및 qlearn_problems 테이블 저장 완료, 원본 문제 검토상태 업데이트 실패"
+                            })
+                    except Exception as update_error:
+                        progress["success"] += 1
+                        progress["results"].append({
+                            "question_id": current_question["id"],
+                            "status": "partial_success",
+                            "message": f"매핑 및 qlearn_problems 테이블 저장 완료, 원본 문제 검토상태 업데이트 오류: {str(update_error)}"
+                        })
+                else:
+                    progress["failed"] += 1
+                    progress["results"].append({
+                        "question_id": current_question["id"],
+                        "status": "failed",
+                        "message": "qlearn_problems 테이블 저장 실패"
+                    })
+                
+                # 완료 카운트 증가
+                progress["completed"] += 1
+                
+                # 다음 문제 처리 또는 완료
+                if progress["completed"] < progress["total"]:
+                    st.rerun()  # 다음 문제 처리
+                else:
+                    # 모든 처리 완료
+                    st.session_state.auto_review_batch_processing = False
+                    st.rerun()
+                    
+            except Exception as e:
+                progress["failed"] += 1
+                progress["results"].append({
+                    "question_id": current_question["id"],
+                    "status": "error",
+                    "message": f"처리 중 오류 발생: {str(e)}"
+                })
+                progress["completed"] += 1
+                
+                if progress["completed"] < progress["total"]:
+                    st.rerun()  # 다음 문제 처리
+                else:
+                    st.session_state.auto_review_batch_processing = False
+                    st.rerun()
+    
+    else:
+        # 모든 처리 완료
+        st.session_state.auto_review_batch_processing = False
+        elapsed_time = datetime.now() - progress["start_time"]
+        
+        st.success(f"✅ 모든 문제 자동 처리 완료!")
+        st.info(f"📊 처리 결과: 성공 {progress['success']}개, 실패 {progress['failed']}개")
+        st.info(f"⏱️ 총 소요시간: {elapsed_time}")
+        
+        # 결과 상세 표시
+        if progress["results"]:
+            with st.expander("📋 처리 결과 상세"):
+                for i, result in enumerate(progress["results"], 1):
+                    status_emoji = {
+                        "success": "✅",
+                        "partial_success": "⚠️",
+                        "failed": "❌",
+                        "error": "💥"
+                    }.get(result["status"], "❓")
+                    
+                    st.write(f"{i}. {status_emoji} {result['question_id']}: {result['message']}")
+        
+        # 초기화 버튼
+        if st.button("🔄 새로 시작", key="auto_review_batch_reset"):
+            # 배치 처리 상태 초기화
+            if "auto_review_batch_progress" in st.session_state:
+                del st.session_state.auto_review_batch_progress
+            if "auto_review_batch_processing" in st.session_state:
+                del st.session_state.auto_review_batch_processing
+            if "auto_review_questions" in st.session_state:
+                del st.session_state.auto_review_questions
+            st.rerun()

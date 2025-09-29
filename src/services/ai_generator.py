@@ -3,7 +3,7 @@ from datetime import datetime
 import streamlit as st
 from openai import OpenAI
 from src.config import get_secret
-from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS
+from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS
 from src.prompts.default_prompts import DEFAULT_SYSTEM_PROMPT, DEFAULT_DIFFICULTY_GUIDES, DIFFICULTY_TIME_MAPPING
 from src.prompts.multiple_choice_template import get_multiple_choice_prompt
 from src.prompts.subjective_template import get_subjective_prompt
@@ -14,7 +14,7 @@ class AIQuestionGenerator:
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY is missing")
         self.client = OpenAI(api_key=api_key)
-        self.assessment_areas = ASSESSMENT_AREAS_DISPLAY
+        self.assessment_areas = ASSESSMENT_AREAS
         self.difficulty_levels = DIFFICULTY_LEVELS
         
         # 기본 프롬프트 템플릿 (외부 파일에서 import)
@@ -76,11 +76,11 @@ class AIQuestionGenerator:
         difficulty_guides = "\n\n난이도별 평가 기준:\n"
         for key, guide in self.default_difficulty_guides.items():
             difficulty_name = {
-                "very_easy": "아주 쉬움",
-                "easy": "쉬움", 
-                "medium": "보통",
-                "hard": "어려움",
-                "very_hard": "매우 어려움"
+                "very_easy": "very easy",
+                "easy": "easy", 
+                "normal": "normal",
+                "hard": "hard",
+                "very_hard": "very hard"
             }.get(key, key)
             difficulty_guides += f"- {difficulty_name}: {guide}\n"
         
@@ -88,21 +88,21 @@ class AIQuestionGenerator:
         time_mapping = "\n난이도별 시간 제한:\n"
         for key, time_limit in self.difficulty_time_mapping.items():
             difficulty_name = {
-                "very_easy": "아주 쉬움",
-                "easy": "쉬움",
-                "medium": "보통", 
-                "hard": "어려움",
-                "very_hard": "매우 어려움"
+                "very_easy": "very easy",
+                "easy": "easy",
+                "normal": "normal", 
+                "hard": "hard",
+                "very_hard": "very hard"
             }.get(key, key)
             time_mapping += f"- {difficulty_name}: {time_limit}\n"
         
         # 스텝 구성 규칙 추가
         step_rules = "\n스텝 구성 규칙:\n"
-        step_rules += "- 아주 쉬움: 1~2 스텝\n"
-        step_rules += "- 쉬움: 2~3 스텝\n"
-        step_rules += "- 보통: 3~5 스텝\n"
-        step_rules += "- 어려움: 5~7 스텝\n"
-        step_rules += "- 매우 어려움: 7~9 스텝"
+        step_rules += "- very easy: 1~2 스텝\n"
+        step_rules += "- easy: 2~3 스텝\n"
+        step_rules += "- normal: 3~5 스텝\n"
+        step_rules += "- hard: 5~7 스텝\n"
+        step_rules += "- very hard: 7~9 스텝"
         
         return base_prompt + difficulty_guides + time_mapping + step_rules
 
@@ -117,7 +117,7 @@ class AIQuestionGenerator:
             return self._build_subjective_prompt(area, difficulty, guide, time_limit, context)
     
     def _build_multiple_choice_prompt(self, area: str, difficulty: str, guide: str, time_limit: str, context: str):
-        """객관식 문제 생성 프롬프트"""
+        """Multiple choice problem generation prompt"""
         # work_application, daily_problem_solving, pharma_distribution, learning_concept의 경우 topic을 동적으로 설정
         if area in ["work_application", "daily_problem_solving", "pharma_distribution", "learning_concept"]:
             topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀', '학습자', '교육과정' 등)"
@@ -138,7 +138,7 @@ class AIQuestionGenerator:
         )
 
     def _build_subjective_prompt(self, area: str, difficulty: str, guide: str, time_limit: str, context: str):
-        """주관식 문제 생성 프롬프트"""
+        """Subjective problem generation prompt"""
         # work_application, daily_problem_solving, pharma_distribution, learning_concept의 경우 topic을 동적으로 설정
         if area in ["work_application", "daily_problem_solving", "pharma_distribution", "learning_concept"]:
             topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀', '학습자', '교육과정' 등)"
@@ -212,7 +212,7 @@ class AIQuestionGenerator:
             if question_type == "multiple_choice":
                 q = {
                     "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
-                    "area": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
+                    "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
                     "difficulty": DIFFICULTY_LEVELS[difficulty],
                     "type": question_type,
                     "question": qdata.get("problemTitle", ""),
@@ -232,7 +232,7 @@ class AIQuestionGenerator:
             else:  # subjective
                 q = {
                     "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
-                    "area": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
+                    "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
                     "difficulty": DIFFICULTY_LEVELS[difficulty],
                     "type": question_type,
                     "question": qdata.get("title", ""),

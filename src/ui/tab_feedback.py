@@ -175,7 +175,7 @@ def perform_ai_review(question):
 
 """
         
-        # 객관식 문제인 경우 선택지 추가
+        # Multiple choice problems: add options
         if question.get("type") == "multiple_choice" and meta.get("steps"):
             problem_content += "**선택지**:\n"
             for step in meta["steps"]:
@@ -183,7 +183,7 @@ def perform_ai_review(question):
                     for opt in step["options"]:
                         problem_content += f"- {opt.get('id', '')}: {opt.get('text', '')}\n"
         
-        # 주관식 문제인 경우 추가 정보
+        # Subjective problems: add additional info
         elif question.get("type") == "subjective":
             if meta.get("scenario"):
                 problem_content += f"**시나리오**: {meta['scenario']}\n"

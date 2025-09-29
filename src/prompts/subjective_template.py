@@ -1,11 +1,11 @@
 """
-주관식 문제 생성 프롬프트 템플릿
+Subjective problem generation prompt template
 """
 
 def get_subjective_prompt(area_display: str, difficulty_display: str, guide: str, time_limit: str, context: str, assessment_area: str, topic_instruction: str, task_template: str, difficulty: str):
-    """주관식 문제 생성 프롬프트"""
+    """Subjective problem generation prompt"""
     return f"""
-다음 조건에 맞는 AI 활용능력평가 주관식 문제를 생성해주세요:
+다음 조건에 맞는 AI 활용능력평가 subjective 문제를 생성해주세요:
 
 평가 영역: {area_display}
 난이도: {difficulty_display} - {guide}

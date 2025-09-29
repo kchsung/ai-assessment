@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.config import get_secret
-from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS, QUESTION_TYPES
+from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS, QUESTION_TYPES
 from src.services.edge_client import EdgeDBClient
 from src.services.ai_generator import AIQuestionGenerator
 from src.services.hitl import HITLManager
@@ -19,6 +19,8 @@ from src.ui.tabs.tab_settings import render as render_settings
 from src.ui.tabs.tab_auto_generate import render as render_auto_generate
 from src.ui.tabs.tab_review import render as render_review
 from src.ui.tabs.tab_problem_correction import render as render_problem_correction
+from src.ui.tabs.tab_gemini_manual_review import render as render_gemini_manual_review
+from src.ui.tabs.tab_gemini_auto_review import render as render_gemini_auto_review
 from src.ui.styles.css_loader import load_all_styles
 
 
@@ -36,7 +38,7 @@ def init_state():
         supabase_key = get_secret("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
         
         if not edge_url or not edge_token:
-            st.error("🚨 Edge Function 설정이 필요합니다")
+            st.warning("⚠️ Edge Function 설정이 필요합니다")
             st.info("Streamlit Cloud Secrets에서 EDGE_FUNCTION_URL과 EDGE_SHARED_TOKEN을 설정하세요.")
             st.session_state.db = None
             return
@@ -47,9 +49,9 @@ def init_state():
                 token=edge_token,
                 supabase_anon=supabase_key,
             )
-            print("✅ Edge Function 초기화 완료")
+            st.success("✅ Edge Function 초기화 완료")
         except Exception as e:
-            st.error(f"Edge Function 초기화 실패: {e}")
+            st.error(f"❌ Edge Function 초기화 실패: {str(e)}")
             st.session_state.db = None
             return
 
@@ -73,7 +75,7 @@ st.title("🤖 AI 활용능력평가 문제생성 에이전트 v2.0")
 st.caption("QLearn 문제 출제 에이젼트-내부용")
 
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📝 문제 생성", "📚 문제 은행", "💬 피드백 & HITL", "📊 분석 대시보드", "🤖 문제 자동생성", "🔍 문제 검토(QLearn)", "🤖 자동 문제 검토", "⚙️ 설정"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs(["📝 문제 생성", "📚 문제 은행", "💬 피드백 & HITL", "📊 분석 대시보드", "🤖 문제 자동생성", "🔍 문제 검토(JSON)", "🤖 자동 문제 검토", "🔍 제미나이 수동 검토", "🤖 제미나이 자동 검토", "⚙️ 설정"])
 
 with tab1:
     render_create(st)
@@ -90,4 +92,8 @@ with tab6:
 with tab7:
     render_problem_correction(st)
 with tab8:
+    render_gemini_manual_review(st)
+with tab9:
+    render_gemini_auto_review(st)
+with tab10:
     render_settings(st)

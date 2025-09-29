@@ -12,7 +12,7 @@ DEFAULT_SYSTEM_PROMPT = (
 DEFAULT_DIFFICULTY_GUIDES = {
     "very_easy": "기본 개념 이해와 단순 도구 사용 능력을 평가. 명확한 정답이 있는 문제.",
     "easy": "기본 도구 활용과 간단한 문제 해결 능력을 평가. 단계별 접근이 가능한 문제.",
-    "medium": "복합적 문제 해결과 도구 조합 활용 능력을 평가. 여러 접근법이 가능한 문제.",
+    "normal": "복합적 문제 해결과 도구 조합 활용 능력을 평가. 여러 접근법이 가능한 문제.",
     "hard": "전략적 사고와 시스템 설계 능력을 평가. 비즈니스 임팩트를 고려한 종합적 문제.",
     "very_hard": "혁신적 사고와 복잡한 시스템 통합 능력을 평가. 창의적 해결책이 필요한 고도화된 문제.",
 }
@@ -21,7 +21,7 @@ DEFAULT_DIFFICULTY_GUIDES = {
 DIFFICULTY_TIME_MAPPING = {
     "very_easy": "3분 이내",
     "easy": "4분 이내", 
-    "medium": "5분 이내",
+    "normal": "5분 이내",
     "hard": "7분 이내",
     "very_hard": "10분 이내"
 }

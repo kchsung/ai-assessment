@@ -24,7 +24,8 @@ def render(st):
             "사용할 OpenAI 모델을 선택하세요:",
             options=list(available_models.keys()),
             format_func=lambda x: f"{x} - {available_models[x]}",
-            index=list(available_models.keys()).index(current_model)
+            index=list(available_models.keys()).index(current_model),
+            key="settings_model"
         )
         
         # 모델 정보 표시

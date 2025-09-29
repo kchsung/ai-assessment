@@ -2,7 +2,7 @@ import streamlit as st
 import time
 import random
 import re
-from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS, QUESTION_TYPES
+from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS, QUESTION_TYPES
 
 # 임시로 함수들을 직접 정의 (Streamlit Cloud 호환성)
 _KEY_PAT = re.compile(
@@ -41,13 +41,13 @@ def extract_answer(question_data):
         metadata = question_data.get("metadata", {})
         
         if question_data.get("type") == "multiple_choice":
-            # 객관식 문제의 경우 steps에서 정답 찾기
+            # Multiple choice problems: find answer in steps
             steps = metadata.get("steps", [])
             for step in steps:
                 if step.get("answer"):
                     return step["answer"]
         else:
-            # 주관식 문제의 경우 evaluation에서 정답 찾기
+            # Subjective problems: find answer in evaluation
             evaluation = metadata.get("evaluation", [])
             if evaluation:
                 return evaluation[0] if isinstance(evaluation, list) else str(evaluation)
@@ -99,7 +99,7 @@ def render_question_card(i: int, q: dict):
     """문제 카드를 렌더링"""
     title = (q.get("title") or "제목 없음").strip()
     question_text = (q.get("content") or "").strip()
-    area  = q.get("area_display", "N/A")
+    category  = q.get("category", "N/A")
     diff  = q.get("difficulty_display", "N/A")
     qtype = q.get("type_display", "N/A")
     saved = bool(q.get("saved_to_db"))
@@ -153,12 +153,17 @@ def render(st):
             st.markdown("**📋 사용자 설정**")
             
             # 평가 영역 선택 (랜덤 옵션 포함)
-            area_options = ["랜덤"] + list(ASSESSMENT_AREAS_DISPLAY.keys())
+            area_options = ["랜덤"] + list(ASSESSMENT_AREAS.keys())
+            def format_auto_area(x):
+                if x == "랜덤":
+                    return "🎲 랜덤"
+                return x
+            
             selected_area = st.selectbox(
                 "평가 영역",
                 options=area_options,
-                format_func=lambda x: "🎲 랜덤" if x == "랜덤" else ASSESSMENT_AREAS_DISPLAY[x],
-                key="auto_area"
+                format_func=format_auto_area,
+                key="tab_auto_area"
             )
             
             # 난이도 선택 (랜덤 옵션 포함)
@@ -167,7 +172,7 @@ def render(st):
                 "난이도",
                 options=difficulty_options,
                 format_func=lambda x: "🎲 랜덤" if x == "랜덤" else DIFFICULTY_LEVELS[x],
-                key="auto_difficulty"
+                key="tab_auto_difficulty"
             )
             
             # 문제 유형 선택 (랜덤 옵션 포함)
@@ -175,15 +180,15 @@ def render(st):
             selected_type = st.selectbox(
                 "문제 유형",
                 options=type_options,
-                format_func=lambda x: "🎲 랜덤" if x == "랜덤" else QUESTION_TYPES[x],
-                key="auto_type"
+                format_func=lambda x: "🎲 랜덤" if x == "랜덤" else x,
+                key="tab_auto_type"
             )
             
             # 사용자 추가 요구사항
             additional_requirements = st.text_area(
                 "추가 요구사항",
                 placeholder="예: 특정 주제나 상황에 대한 문제를 생성해주세요...",
-                key="auto_requirements"
+                key="tab_auto_requirements"
             )
             
             st.markdown("---")
@@ -197,7 +202,7 @@ def render(st):
                 min_value=1,
                 max_value=50,
                 value=st.session_state.auto_generate_total_count,
-                key="auto_total_count"
+                key="tab_auto_total_count"
             )
             st.session_state.auto_generate_total_count = total_count
             
@@ -207,7 +212,7 @@ def render(st):
             col_btn1, col_btn2 = st.columns([1, 1])
             
             with col_btn1:
-                if st.button("🚀 자동생성 시작", use_container_width=True, type="primary", disabled=st.session_state.auto_generate_running):
+                if st.button("🚀 자동생성 시작", use_container_width=True, type="primary", disabled=st.session_state.auto_generate_running, key="tab_auto_generate_start"):
                     # 자동생성 시작
                     st.session_state.auto_generate_running = True
                     st.session_state.auto_generate_stop_requested = False
@@ -215,7 +220,7 @@ def render(st):
                     st.rerun()
             
             with col_btn2:
-                if st.button("⏹️ 중지", use_container_width=True, type="secondary", disabled=not st.session_state.auto_generate_running):
+                if st.button("⏹️ 중지", use_container_width=True, type="secondary", disabled=not st.session_state.auto_generate_running, key="tab_auto_generate_stop"):
                     # 중지 요청
                     st.session_state.auto_generate_stop_requested = True
                     st.rerun()
@@ -325,12 +330,11 @@ def generate_next_question(st, selected_area, selected_difficulty, selected_type
             clean_title = sanitize_title(question_title)
             question_info = {
                 "title": clean_title,
-                "area": area,
-                "area_display": ASSESSMENT_AREAS_DISPLAY.get(area, area),
+                "category": area,
                 "difficulty": difficulty,
                 "difficulty_display": DIFFICULTY_LEVELS.get(difficulty, difficulty),
                 "type": question_type,
-                "type_display": QUESTION_TYPES.get(question_type, question_type),
+                "type_display": question_type,
                 "content": result.get("question", ""),   # 본문은 그대로
                 "answer": extract_answer(result),
                 "raw_data": result,

@@ -40,13 +40,13 @@ def extract_answer(question_data):
         metadata = question_data.get("metadata", {})
         
         if question_data.get("type") == "multiple_choice":
-            # 객관식 문제의 경우 steps에서 정답 찾기
+            # Multiple choice problems: find answer in steps
             steps = metadata.get("steps", [])
             for step in steps:
                 if step.get("answer"):
                     return step["answer"]
         else:
-            # 주관식 문제의 경우 evaluation에서 정답 찾기
+            # Subjective problems: find answer in evaluation
             evaluation = metadata.get("evaluation", [])
             if evaluation:
                 return evaluation[0] if isinstance(evaluation, list) else str(evaluation)

@@ -48,7 +48,7 @@ def render_question_card(i: int, q: dict):
     """문제 카드를 렌더링"""
     title = (q.get("title") or "제목 없음").strip()
     question_text = (q.get("content") or "").strip()
-    area  = q.get("area_display", "N/A")
+    category  = q.get("category", "N/A")
     diff  = q.get("difficulty_display", "N/A")
     qtype = q.get("type_display", "N/A")
     saved = bool(q.get("saved_to_db"))

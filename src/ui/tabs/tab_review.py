@@ -2,56 +2,23 @@
 문제 검토 탭
 """
 import streamlit as st
+import json
 import uuid
+import re
 from datetime import datetime
-from src.constants import ASSESSMENT_AREAS_DISPLAY, ASSESSMENT_AREAS, QUESTION_TYPES
-try:
-    from src.services.gemini_client import GeminiClient
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-    GeminiClient = None
-from src.prompts.ai_review_template import DEFAULT_AI_REVIEW_PROMPT
+from src.constants import ASSESSMENT_AREAS, QUESTION_TYPES, VALID_DIFFICULTIES, DEFAULT_DIFFICULTY, DEFAULT_DOMAIN
 
 def render(st):
-    st.header("🔍 제미나이 문제 검토")
-    st.caption("생성된 문제를 검토하고 qlearn_problems 테이블에 저장합니다.")
+    st.header("🔍 문제 검토(JSON)")
+    st.caption("생성된 문제의 JSON 형식을 검토하고 qlearn_problems 테이블에 저장합니다. (3단계까지만 수행)")
     
     # DB 연결 체크
     if st.session_state.db is None:
         st.error("데이터베이스 연결이 초기화되지 않았습니다.")
         return
     
-    # 제미나이 API 연결 체크
-    gemini_available = False
-    gemini_client = None
-    
-    if GEMINI_AVAILABLE:
-        try:
-            # 환경 변수에서 직접 확인
-            import os
-            api_key = os.getenv("GEMINI_API_KEY")
-            # print(f"DEBUG tab_review: GEMINI_API_KEY found: {bool(api_key)}")
-            
-            if api_key:
-                gemini_client = GeminiClient()
-                # print("DEBUG tab_review: GeminiClient 초기화 성공")
-                gemini_available = True
-            else:
-                # print("DEBUG tab_review: GEMINI_API_KEY not found")
-                pass
-        except Exception as e:
-            # print(f"DEBUG tab_review: GeminiClient 초기화 실패: {e}")
-            gemini_available = False
-    else:
-        # print("DEBUG tab_review: GEMINI_AVAILABLE = False")
-        pass
-    
-    if not gemini_available:
-        if not GEMINI_AVAILABLE:
-            st.warning("⚠️ google-generativeai 패키지가 설치되지 않았습니다. 내용 검토 기능을 사용할 수 없습니다.")
-        else:
-            st.warning("⚠️ 제미나이 API 키가 설정되지 않았습니다. 내용 검토 기능을 사용할 수 없습니다.")
+    # 제미나이 검토 기능은 별도 탭으로 이동됨
+    st.info("💡 제미나이 검토 기능은 '제미나이 수동 검토' 탭으로 이동되었습니다.")
     
     # 1단계: 문제 가져오기 및 필터링
     st.markdown("### 1단계: 문제 가져오기 및 필터링")
@@ -61,10 +28,16 @@ def render(st):
     
     with col1:
         # 평가 영역 필터
+        def format_review_area(x):
+            if x == "전체":
+                return "전체"
+            return x
+        
         area_filter = st.selectbox(
             "평가 영역 필터",
-            options=["전체"] + list(ASSESSMENT_AREAS_DISPLAY.keys()),
-            format_func=lambda x: "전체" if x == "전체" else ASSESSMENT_AREAS_DISPLAY[x]
+            options=["전체"] + list(ASSESSMENT_AREAS.keys()),
+            format_func=format_review_area,
+            key="tab_review_area_filter"
         )
     
     with col2:
@@ -72,11 +45,12 @@ def render(st):
         type_filter = st.selectbox(
             "문제 유형 필터", 
             options=["전체"] + list(QUESTION_TYPES.keys()),
-            format_func=lambda x: "전체" if x == "전체" else QUESTION_TYPES[x]
+            format_func=lambda x: "전체" if x == "전체" else x,
+            key="tab_review_type_filter"
         )
     
     # 필터 적용하여 문제 가져오기
-    if st.button("🔍 문제 조회", type="primary"):
+    if st.button("🔍 문제 조회", type="primary", key="tab_review_search"):
         filters = {}
         if area_filter != "전체":
             # 한국어 키를 영어 값으로 변환
@@ -97,8 +71,6 @@ def render(st):
             del st.session_state.selected_review_question
         if "mapped_review_data" in st.session_state:
             del st.session_state.mapped_review_data
-        if "gemini_review_result" in st.session_state:
-            del st.session_state.gemini_review_result
         if "used_review_prompt" in st.session_state:
             del st.session_state.used_review_prompt
         if "prompt_source" in st.session_state:
@@ -119,7 +91,8 @@ def render(st):
         
         selected_display = st.selectbox(
             "검토할 문제 선택",
-            options=list(question_options.keys())
+            options=list(question_options.keys()),
+            key="tab_review_question_selector"
         )
         
         if selected_display:
@@ -152,138 +125,21 @@ def render(st):
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("📋 매핑 데이터 확인", type="secondary"):
+            if st.button("📋 매핑 데이터 확인", type="secondary", key="tab_review_mapping_confirm"):
                 st.session_state.mapped_review_data = mapped_data
                 st.success("데이터 매핑이 완료되었습니다.")
         
     
-    # 3단계: 제미나이 API 내용 검토
-    if "mapped_review_data" in st.session_state and gemini_available:
-        st.markdown("### 3단계: 제미나이 API 내용 검토")
-        
-        # 세션 상태 초기화 버튼 (디버깅용)
-        if st.button("🔄 세션 상태 초기화 (디버깅)", type="secondary"):
-            # 모든 관련 세션 상태 초기화
-            keys_to_clear = [
-                "gemini_review_result", "used_review_prompt", "prompt_source",
-                "selected_review_question", "mapped_review_data"
-            ]
-            for key in keys_to_clear:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.success("세션 상태가 초기화되었습니다.")
-            st.rerun()
-        
-        mapped_data = st.session_state.mapped_review_data
-        
-        if st.button("🤖 제미나이로 내용 검토", type="primary"):
-            with st.spinner("제미나이 API로 내용을 검토 중..."):
-                try:
-                    # 검토할 내용 구성
-                    review_content = f"""
-문제 제목: {mapped_data.get('title', '')}
-주제: {mapped_data.get('topic', '')}
-난이도: {mapped_data.get('difficulty', '')}
-시나리오: {mapped_data.get('scenario', '')}
-목표: {mapped_data.get('goal', [])}
-과제: {mapped_data.get('task', '')}
-요구사항: {mapped_data.get('requirements', [])}
-제약사항: {mapped_data.get('constraints', [])}
-가이드: {mapped_data.get('guide', {})}
-평가 기준: {mapped_data.get('evaluation', [])}
-"""
-                    
-                    # 프롬프트를 DB에서 가져오기
-                    system_prompt = DEFAULT_AI_REVIEW_PROMPT
-                    prompt_source = "기본 프롬프트"
-                    try:
-                        # Supabase에서 프롬프트 조회 (QLearn 검토용 프롬프트 ID 사용)
-                        print(f"🔍 QLearn 검토용 프롬프트 ID 조회: 9e55115e-0198-401d-8633-075bc8a25201")
-                        db_prompt = st.session_state.db.get_prompt_by_id("9e55115e-0198-401d-8633-075bc8a25201")
-                        if db_prompt:
-                            system_prompt = db_prompt
-                            prompt_source = "데이터베이스 프롬프트 (ID: 9e55115e-0198-401d-8633-075bc8a25201)"
-                            print(f"✅ QLearn 검토 프롬프트 조회 성공: {len(db_prompt)} 문자")
-                            st.info("📋 데이터베이스에서 QLearn 검토 프롬프트를 가져왔습니다.")
-                        else:
-                            print(f"❌ QLearn 검토 프롬프트 조회 실패 - None 반환")
-                            st.info("📝 기본 검토 프롬프트를 사용합니다.")
-                    except Exception as e:
-                        print(f"❌ QLearn 검토 프롬프트 조회 예외: {e}")
-                        st.warning(f"프롬프트 조회 실패: {e}. 기본 프롬프트를 사용합니다.")
-                    
-                    # 사용된 프롬프트 정보 저장
-                    st.session_state.used_review_prompt = system_prompt
-                    st.session_state.prompt_source = prompt_source
-                    
-                    # 제미나이 API 호출
-                    review_result = gemini_client.review_content(
-                        system_prompt=system_prompt,
-                        user_prompt=review_content
-                    )
-                    
-                    st.session_state.gemini_review_result = review_result
-                    st.success("제미나이 API 검토가 완료되었습니다.")
-                    
-                except Exception as e:
-                    st.error(f"제미나이 API 검토 실패: {str(e)}")
-        
-        # 검토 결과 표시
-        if "gemini_review_result" in st.session_state:
-            st.markdown("**제미나이 API 검토 결과**")
-            
-            # 응답 길이 정보 표시
-            result_length = len(st.session_state.gemini_review_result)
-            st.caption(f"응답 길이: {result_length} 문자")
-            
-            # 검토 내용 표시
-            st.text_area("검토 내용", st.session_state.gemini_review_result, height=300)
-            
-            # 사용된 프롬프트 정보 표시
-            if "used_review_prompt" in st.session_state and "prompt_source" in st.session_state:
-                st.markdown("---")
-                st.markdown("### 📋 사용된 프롬프트 정보")
-                
-                # 프롬프트 소스 정보
-                st.info(f"**프롬프트 소스**: {st.session_state.prompt_source}")
-                
-                # 프롬프트 내용 표시
-                with st.expander("🔍 사용된 프롬프트 전체 내용", expanded=False):
-                    st.text_area(
-                        "프롬프트 내용", 
-                        st.session_state.used_review_prompt, 
-                        height=400,
-                        help="제미나이 API에 전달된 시스템 프롬프트의 전체 내용입니다."
-                    )
-                    st.caption(f"프롬프트 길이: {len(st.session_state.used_review_prompt)} 문자")
-            
-            # 원시 응답 정보 (디버깅용)
-            with st.expander("🔍 응답 디버깅 정보"):
-                st.code(f"응답 타입: {type(st.session_state.gemini_review_result)}")
-                st.code(f"응답 길이: {result_length}")
-                if result_length > 0:
-                    st.code(f"첫 100자: {st.session_state.gemini_review_result[:100]}...")
-                else:
-                    st.warning("응답이 비어있습니다.")
-    
-    # 4단계: qlearn_problems 테이블에 저장
+    # 3단계: qlearn_problems 테이블에 저장
     if "mapped_review_data" in st.session_state:
-        st.markdown("### 4단계: qlearn_problems 테이블에 저장")
+        st.markdown("### 3단계: qlearn_problems 테이블에 저장")
         
         mapped_data = st.session_state.mapped_review_data
-        
-        # 검토 완료 여부 확인
-        review_completed = "gemini_review_result" in st.session_state
-        
-        if review_completed:
-            st.success("✅ 내용 검토가 완료되었습니다.")
-        else:
-            st.warning("⚠️ 내용 검토를 건너뛰고 저장하시겠습니까?")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("💾 qlearn_problems 저장", type="primary", disabled=not review_completed):
+            if st.button("💾 qlearn_problems 저장", type="primary", key="tab_review_save"):
                 try:
                     # 선택된 문제 정보 확인
                     selected_question = st.session_state.get("selected_review_question")
@@ -332,21 +188,6 @@ def render(st):
                         except Exception as verify_error:
                             st.warning(f"⚠️ 3단계 경고: 저장 검증 오류: {str(verify_error)}")
                         
-                        # 4단계: questions 테이블의 review_done 상태 확인
-                        st.info("📝 4단계: questions 테이블 review_done 상태 확인 중...")
-                        try:
-                            updated_questions = st.session_state.db.get_questions({"id": original_question_id})
-                            if updated_questions and len(updated_questions) > 0:
-                                review_done_status = updated_questions[0].get("review_done", False)
-                                if review_done_status:
-                                    st.success("✅ 4단계 완료: questions 테이블 review_done이 TRUE로 정상 업데이트됨")
-                                else:
-                                    st.warning("⚠️ 4단계 경고: questions 테이블 review_done이 여전히 FALSE입니다")
-                            else:
-                                st.warning("⚠️ 4단계 경고: questions 테이블에서 원본 문제를 찾을 수 없습니다")
-                        except Exception as check_error:
-                            st.warning(f"⚠️ 4단계 경고: questions 테이블 상태 확인 오류: {str(check_error)}")
-                        
                         # 최종 성공 메시지
                         st.success("🎉 모든 저장 과정이 완료되었습니다!")
                         
@@ -355,12 +196,6 @@ def render(st):
                             del st.session_state.selected_review_question
                         if "mapped_review_data" in st.session_state:
                             del st.session_state.mapped_review_data
-                        if "gemini_review_result" in st.session_state:
-                            del st.session_state.gemini_review_result
-                        if "used_review_prompt" in st.session_state:
-                            del st.session_state.used_review_prompt
-                        if "prompt_source" in st.session_state:
-                            del st.session_state.prompt_source
                         
                         st.rerun()
                     else:
@@ -372,22 +207,150 @@ def render(st):
         
         with col2:
             # 새로 시작 버튼
-            if st.button("🔄 새로 시작", type="secondary"):
+            if st.button("🔄 새로 시작", type="secondary", key="tab_review_restart"):
                 # 세션 상태 정리
                 if "selected_review_question" in st.session_state:
                     del st.session_state.selected_review_question
                 if "mapped_review_data" in st.session_state:
                     del st.session_state.mapped_review_data
-                if "gemini_review_result" in st.session_state:
-                    del st.session_state.gemini_review_result
-                if "used_review_prompt" in st.session_state:
-                    del st.session_state.used_review_prompt
-                if "prompt_source" in st.session_state:
-                    del st.session_state.prompt_source
                 st.rerun()
+
+def extract_json_from_text(text: str) -> dict:
+    """
+    텍스트에서 JSON 부분을 추출합니다.
+    """
+    if not text:
+        return {}
+    
+    # 1. 먼저 전체 텍스트가 JSON인지 확인
+    try:
+        return json.loads(text.strip())
+    except json.JSONDecodeError:
+        pass
+    
+    # 2. 코드 블록(```json ... ```) 내부의 JSON 추출
+    # 더 정확한 코드 블록 패턴 (```json으로 시작하고 ```로 끝나는 부분)
+    code_block_pattern = r'```(?:json)?\s*\n?(\{.*?\})\s*\n?```'
+    code_matches = re.findall(code_block_pattern, text, re.DOTALL)
+    for match in code_matches:
+        try:
+            # 공백과 줄바꿈 정리
+            cleaned_match = match.strip()
+            return json.loads(cleaned_match)
+        except json.JSONDecodeError:
+            continue
+    
+    # 2-1. 더 간단한 코드 블록 패턴도 시도
+    simple_code_pattern = r'```json\s*(\{.*?\})\s*```'
+    simple_matches = re.findall(simple_code_pattern, text, re.DOTALL)
+    for match in simple_matches:
+        try:
+            cleaned_match = match.strip()
+            return json.loads(cleaned_match)
+        except json.JSONDecodeError:
+            continue
+    
+    # 3. 첫 번째 중괄호부터 마지막 중괄호까지 추출
+    first_brace = text.find('{')
+    last_brace = text.rfind('}')
+    
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        json_candidate = text[first_brace:last_brace + 1]
+        try:
+            return json.loads(json_candidate)
+        except json.JSONDecodeError:
+            pass
+    
+    # 4. 여러 JSON 객체가 있는 경우 가장 긴 것 선택
+    json_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
+    matches = re.findall(json_pattern, text, re.DOTALL)
+    
+    # 가장 긴 JSON 후보를 선택
+    longest_match = ""
+    for match in matches:
+        if len(match) > len(longest_match):
+            longest_match = match
+    
+    if longest_match:
+        try:
+            return json.loads(longest_match)
+        except json.JSONDecodeError:
+            pass
+    
+    # 5. 중괄호 개수를 맞춰서 JSON 추출 시도
+    brace_count = 0
+    start_idx = -1
+    
+    for i, char in enumerate(text):
+        if char == '{':
+            if brace_count == 0:
+                start_idx = i
+            brace_count += 1
+        elif char == '}':
+            brace_count -= 1
+            if brace_count == 0 and start_idx != -1:
+                json_candidate = text[start_idx:i + 1]
+                try:
+                    return json.loads(json_candidate)
+                except json.JSONDecodeError:
+                    continue
+    
+    # 6. 플레이스홀더가 있는 JSON 처리 (예: {time_limit})
+    if '{' in text and '}' in text:
+        # 플레이스홀더를 기본값으로 대체하여 JSON 파싱 시도
+        placeholder_replacements = {
+            '{time_limit}': '"5분"',
+            '{difficulty}': f'"{DEFAULT_DIFFICULTY}"',
+            '{category}': f'"{DEFAULT_DOMAIN}"',
+            '{lang}': '"kr"'
+        }
+        
+        # 첫 번째 중괄호부터 마지막 중괄호까지 추출
+        first_brace = text.find('{')
+        last_brace = text.rfind('}')
+        
+        if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+            json_candidate = text[first_brace:last_brace + 1]
+            
+            # 플레이스홀더 대체
+            for placeholder, replacement in placeholder_replacements.items():
+                json_candidate = json_candidate.replace(placeholder, replacement)
+            
+            try:
+                return json.loads(json_candidate)
+            except json.JSONDecodeError:
+                pass
+    
+    return {}
+
+def ensure_array_format(data) -> list:
+    """데이터를 올바른 배열 형식으로 변환"""
+    if data is None:
+        return []
+    
+    if isinstance(data, list):
+        # 이미 배열인 경우, 각 요소가 문자열인지 확인하고 변환
+        return [str(item) for item in data if item is not None and str(item).strip()]
+    
+    if isinstance(data, str):
+        # 문자열인 경우, JSON 파싱 시도 후 실패하면 단일 요소 배열로 변환
+        try:
+            parsed = json.loads(data)
+            if isinstance(parsed, list):
+                return [str(item) for item in parsed if item is not None and str(item).strip()]
+            else:
+                return [str(parsed)] if str(parsed).strip() else []
+        except (json.JSONDecodeError, TypeError):
+            return [data] if data.strip() else []
+    
+    # 기타 타입인 경우 문자열로 변환하여 단일 요소 배열로 반환
+    return [str(data)] if str(data).strip() else []
 
 def map_question_to_qlearn_format(question: dict) -> dict:
     """questions 테이블 데이터를 qlearn_problems 형식으로 매핑"""
+    
+    # UUID 생성
+    problem_id = str(uuid.uuid4())
     
     # 현재 시간
     now = datetime.now()
@@ -395,105 +358,55 @@ def map_question_to_qlearn_format(question: dict) -> dict:
     # 메타데이터 추출
     metadata = question.get("metadata", {})
     
-    # category 필드에 들어갈 수 있는 유효한 값들
-    # life, news, interview, learning_concept, pharma_distribution
-    
-    # category 값 매핑 (원본 값 -> 유효한 enum 값으로 변환)
-    category_mapping = {
-        "Pharma Distribution": "pharma_distribution",
-        "pharma_distribution": "pharma_distribution",
-        "pharma": "pharma_distribution",
-        "Pharma": "pharma_distribution",
-        "Distribution": "pharma_distribution",
-        "Life": "life",
-        "life": "life",
-        "News": "news", 
-        "news": "news",
-        "Interview": "interview",
-        "interview": "interview",
-        "Learning Concept": "learning_concept",
-        "learning_concept": "learning_concept",
-        "Learning": "learning_concept",
-        "Concept": "learning_concept",
-        "": "life",  # 기본값
-        None: "life"
-    }
-    
-    # difficulty 값 매핑 (한국어 -> 올바른 enum 값으로 변환)
+    # difficulty 값 변환 (Supabase q_difficulty enum에 맞게) - 허용된 값만 사용
     difficulty_mapping = {
-        "매우 쉬움": "very easy",
-        "very easy": "very easy",
-        "Very Easy": "very easy",
-        "쉬움": "easy",
+        "very_easy": "very easy",
         "easy": "easy",
-        "Easy": "easy",
-        "보통": "normal",
+        "medium": "normal",  # medium을 normal로 변환
         "normal": "normal",
-        "Normal": "normal",
-        "medium": "normal",  # medium도 normal로 매핑
-        "Medium": "normal",
-        "어려움": "hard",
         "hard": "hard",
-        "Hard": "hard",
+        "very_hard": "very hard",
+        "보통": "normal",  # 한국어 "보통"을 "normal"로 변환
+        "쉬움": "easy",
+        "어려움": "hard",
+        "아주 쉬움": "very easy",
+        "아주 어려움": "very hard",
         "매우 어려움": "very hard",
-        "very hard": "very hard",
-        "Very Hard": "very hard",
-        "very_hard": "very hard",  # 언더스코어 버전도 지원
         "": "normal",  # 기본값
         None: "normal"
     }
     
-    original_area = metadata.get("category", question.get("area", ""))
-    valid_category = category_mapping.get(original_area, "life")  # 기본값은 "life"
+    # Supabase q_difficulty enum 값만 허용
+    original_difficulty = question.get("difficulty", "")
+    valid_difficulty = difficulty_mapping.get(original_difficulty, DEFAULT_DIFFICULTY)
     
-    original_difficulty = question.get("difficulty") or "보통"
-    valid_difficulty = difficulty_mapping.get(original_difficulty, "normal")  # 기본값은 "normal"
+    # 최종 검증: 허용된 enum 값이 아니면 기본값으로 설정
+    if valid_difficulty not in VALID_DIFFICULTIES:
+        valid_difficulty = DEFAULT_DIFFICULTY
     
-    # 매핑된 데이터 구성 (모든 NOT NULL 필드에 기본값 제공)
+    # 매핑된 데이터 구성
     mapped_data = {
-        "lang": "kr",  # 기본값으로 고정
-        "category": valid_category,  # 유효한 category 값 사용
-        "topic": metadata.get("topic") or "기본 주제",  # NOT NULL
-        "difficulty": valid_difficulty,  # 유효한 difficulty enum 값 사용
-        "time_limit": metadata.get("time_limit") or "5분",  # NOT NULL
-        "topic_summary": metadata.get("topic") or "기본 주제 요약",  # NOT NULL
-        "title": metadata.get("topic") or question.get("question") or "기본 제목",  # NOT NULL
-        "scenario": metadata.get("scenario") or "기본 시나리오",  # NOT NULL
-        "goal": metadata.get("goal") or [],  # NOT NULL (jsonb)
-        "first_question": metadata.get("first_question") or [],  # NOT NULL (jsonb)
-        "requirements": metadata.get("requirements") or [],  # NOT NULL (jsonb)
-        "constraints": metadata.get("constraints") or [],  # NOT NULL (jsonb)
-        "guide": metadata.get("guide") or {},  # NOT NULL (jsonb)
-        "evaluation": metadata.get("evaluation") or [],  # NOT NULL (jsonb)
-        "task": metadata.get("task") or "기본 과제",  # NOT NULL
+        "id": problem_id,
+        "lang": metadata.get("lang", "kr"),
+        "category": metadata.get("category", question.get("category", "")),
+        "topic": metadata.get("topic", ""),
+        "difficulty": valid_difficulty,  # 변환된 difficulty 사용
+        "time_limit": metadata.get("time_limit", ""),
+        "topic_summary": metadata.get("topic", ""),
+        "title": question.get("question", metadata.get("topic", "")),
+        "scenario": metadata.get("scenario", ""),
+        "goal": ensure_array_format(metadata.get("goal", [])),
+        "first_question": ensure_array_format(metadata.get("first_question", [])),
+        "requirements": ensure_array_format(metadata.get("requirements", [])),
+        "constraints": ensure_array_format(metadata.get("constraints", [])),
+        "guide": metadata.get("guide", {}),
+        "evaluation": ensure_array_format(metadata.get("evaluation", [])),
+        "task": metadata.get("task", ""),
+        # created_by 필드는 제외 (UUID 오류 방지)
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+        "reference": metadata.get("reference", {}),
         "active": False  # 기본값
     }
-    
-    # 선택적 필드들 추가
-    if metadata.get("reference"):
-        mapped_data["reference"] = metadata.get("reference")
-    
-    # 시간 필드는 항상 포함
-    mapped_data["created_at"] = now.isoformat()
-    mapped_data["updated_at"] = now.isoformat()
-    
-    # id나 created_by 필드가 있는 경우 제거
-    if "id" in mapped_data:
-        del mapped_data["id"]
-    
-    # created_by 필드가 빈 문자열이거나 None인 경우 제거
-    if "created_by" in mapped_data:
-        created_by_value = mapped_data["created_by"]
-        if created_by_value is None or created_by_value == "" or created_by_value.strip() == "":
-            del mapped_data["created_by"]
-    
-    # 빈 문자열이나 None 값들을 정리
-    keys_to_remove = []
-    for key, value in mapped_data.items():
-        if value is None or (isinstance(value, str) and value.strip() == ""):
-            keys_to_remove.append(key)
-    
-    for key in keys_to_remove:
-        del mapped_data[key]
     
     return mapped_data

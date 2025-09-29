@@ -1,7 +1,7 @@
 import random
 from datetime import datetime
 import streamlit as st
-from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS, QUESTION_TYPES
+from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS, QUESTION_TYPES
 
 
 def render(st):
@@ -10,9 +10,12 @@ def render(st):
     
     # 좌측: 문제 생성 설정
     with col1:
-        area = st.selectbox("평가 영역", options=list(ASSESSMENT_AREAS_DISPLAY.keys()), format_func=lambda k: ASSESSMENT_AREAS_DISPLAY[k])
-        difficulty = st.selectbox("난이도", options=list(DIFFICULTY_LEVELS.keys()), format_func=lambda k: DIFFICULTY_LEVELS[k])
-        qtype = st.selectbox("문제 유형", options=list(QUESTION_TYPES.keys()), format_func=lambda k: QUESTION_TYPES[k])
+        def format_create_area(k):
+            return k
+        
+        area = st.selectbox("평가 영역", options=list(ASSESSMENT_AREAS.keys()), format_func=format_create_area, key="create_area")
+        difficulty = st.selectbox("난이도", options=list(DIFFICULTY_LEVELS.keys()), format_func=lambda k: DIFFICULTY_LEVELS[k], key="create_difficulty")
+        qtype = st.selectbox("문제 유형", options=list(QUESTION_TYPES.keys()), format_func=lambda k: k, key="create_type")
         
         # System 프롬프트 입력
         system_prompt = st.text_area("System 프롬프트", placeholder="시스템 프롬프트에 추가할 내용을 입력하세요...", help="AI에게 역할이나 행동 방식을 지시하는 시스템 프롬프트를 입력하세요")
@@ -20,7 +23,7 @@ def render(st):
         # User 프롬프트 입력
         user_prompt = st.text_area("User 프롬프트", placeholder="사용자 프롬프트에 추가할 내용을 입력하세요...", help="문제 생성 요청에 추가할 구체적인 요구사항이나 맥락을 입력하세요")
 
-        if st.button("🎯 문제 생성", type="primary", use_container_width=True):
+        if st.button("🎯 문제 생성", type="primary", use_container_width=True, key="create_generate"):
             with st.spinner("생성 중..."):
                 if st.session_state.generator is None:
                     st.error("AI 생성기가 초기화되지 않았습니다. API 키를 확인하세요.")
@@ -57,9 +60,9 @@ def render(st):
                 st.rerun()
             
             # 현재 설정 정보
-            area_display = ASSESSMENT_AREAS_DISPLAY.get(st.session_state.current_area, st.session_state.current_area)
+            area_display = st.session_state.current_area
             difficulty_display = DIFFICULTY_LEVELS.get(st.session_state.current_difficulty, st.session_state.current_difficulty)
-            qtype_display = QUESTION_TYPES.get(st.session_state.current_qtype, st.session_state.current_qtype)
+            qtype_display = st.session_state.current_qtype
             
             st.info(f"**평가 영역**: {area_display} | **난이도**: {difficulty_display} | **유형**: {qtype_display}")
             
@@ -140,7 +143,7 @@ def render(st):
                 
                 # 객관식 문제 표시
                 if q.get("type") == "multiple_choice" and meta.get("steps"):
-                    st.markdown("### 📋 객관식 문제")
+                    st.markdown("### 📋 Multiple Choice Problem")
                     
                     # 시나리오를 마크다운으로 표시
                     if meta.get("scenario"):
@@ -188,7 +191,7 @@ def render(st):
                 
                 # 주관식 문제 표시
                 elif q.get("type") == "subjective":
-                    st.markdown("### 📝 주관식 문제")
+                    st.markdown("### 📝 Subjective Problem")
                     
                     # 시나리오를 마크다운으로 표시
                     if meta.get("scenario"):

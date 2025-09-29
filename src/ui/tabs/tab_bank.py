@@ -1,19 +1,24 @@
 import streamlit as st
-from src.constants import ASSESSMENT_AREAS, ASSESSMENT_AREAS_DISPLAY, DIFFICULTY_LEVELS, QUESTION_TYPES
+from src.constants import ASSESSMENT_AREAS, DIFFICULTY_LEVELS, QUESTION_TYPES
 
 def render(st):
     
     # 검색 필터
     c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 2, 1])
     with c1:
-        f_area = st.selectbox("평가 영역", ["전체"] + list(ASSESSMENT_AREAS_DISPLAY.keys()), 
-                             format_func=lambda v: "전체" if v=="전체" else ASSESSMENT_AREAS_DISPLAY[v])
+        def format_bank_area(v):
+            if v == "전체":
+                return "전체"
+            return v
+        
+        f_area = st.selectbox("평가 영역", ["전체"] + list(ASSESSMENT_AREAS.keys()), 
+                             format_func=format_bank_area, key="bank_area")
     with c2:
         f_diff = st.selectbox("난이도", ["전체"] + list(DIFFICULTY_LEVELS.keys()), 
-                             format_func=lambda v: "전체" if v=="전체" else DIFFICULTY_LEVELS[v])
+                             format_func=lambda v: "전체" if v=="전체" else DIFFICULTY_LEVELS[v], key="bank_difficulty")
     with c3:
         f_type = st.selectbox("유형", ["전체"] + list(QUESTION_TYPES.keys()), 
-                             format_func=lambda v: "전체" if v=="전체" else QUESTION_TYPES[v])
+                             format_func=lambda v: "전체" if v=="전체" else v, key="bank_type")
     with c4:
         search_text = st.text_input("검색어", placeholder="문제 내용으로 검색...", key="question_search_input")
     with c5:
@@ -21,7 +26,7 @@ def render(st):
         if st.button("🔍 검색", use_container_width=True):
             filters = {}
             if f_area != "전체": 
-                filters["area"] = ASSESSMENT_AREAS[f_area]
+                filters["category"] = ASSESSMENT_AREAS[f_area]
             if f_diff != "전체": 
                 filters["difficulty"] = DIFFICULTY_LEVELS[f_diff]
             if f_type != "전체": 
@@ -107,7 +112,7 @@ def render(st):
             
             # 객관식 문제 상세 표시
             if selected_q.get("type") == "multiple_choice" and meta.get("steps"):
-                st.markdown("### 📋 객관식 문제")
+                st.markdown("### 📋 Multiple Choice Problem")
                 
                 # 시나리오를 마크다운으로 표시
                 if meta.get("scenario"):
@@ -155,7 +160,7 @@ def render(st):
             
             # 주관식 문제 상세 표시
             elif selected_q.get("type") == "subjective":
-                st.markdown("### 📝 주관식 문제")
+                st.markdown("### 📝 Subjective Problem")
                 
                 # 시나리오를 마크다운으로 표시
                 if meta.get("scenario"):

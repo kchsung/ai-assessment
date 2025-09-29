@@ -1,11 +1,11 @@
 """
-객관식 문제 생성 프롬프트 템플릿
+Multiple choice problem generation prompt template
 """
 
 def get_multiple_choice_prompt(area_display: str, difficulty_display: str, guide: str, time_limit: str, context: str, assessment_area: str, topic_instruction: str, difficulty: str):
-    """객관식 문제 생성 프롬프트"""
+    """Multiple choice problem generation prompt"""
     return f"""
-다음 조건에 맞는 AI 활용능력평가 객관식 문제를 생성해주세요:
+다음 조건에 맞는 AI 활용능력평가 multiple choice 문제를 생성해주세요:
 
 평가 영역: {area_display}
 난이도: {difficulty_display} - {guide}

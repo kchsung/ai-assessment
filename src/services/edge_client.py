@@ -12,7 +12,7 @@ class EdgeDBClient:
             raise RuntimeError("EDGE_SHARED_TOKEN not set")
         
 
-    def _call(self, action: str, params: dict | None = None):
+    def _call(self, action: str, params: dict | None = None, timeout: int = 30, max_retries: int = 3):
         headers = {
             "content-type": "application/json",
             "x-edge-token": self.token,
@@ -21,28 +21,43 @@ class EdgeDBClient:
             headers["authorization"] = f"Bearer {self.supabase_anon}"
 
         payload = {"action": action, "params": params or {}}
-        # 디버그 정보는 로깅으로 변경 (문제 데이터 출력 방지)
-        # print(f"🚀 Edge Function 호출 - Action: {action}")
-        # print(f"📡 URL: {self.base_url}")
-        # print(f"📦 Payload: {payload}")
         
-        resp = requests.post(self.base_url, headers=headers, json=payload)
-        # print(f"📊 Response Status: {resp.status_code}")
-        # print(f"📄 Response Text: {resp.text}")
-        
-        if resp.status_code >= 400:
-            raise RuntimeError(f"Edge error {resp.status_code}: {resp.text}")
-        
-        # JSON 파싱 시도
-        try:
-            data = resp.json()
-            # print(f"📋 Parsed Response: {data}")
-        except ValueError as e:
-            raise RuntimeError(f"Edge JSON parse error: {e}, Response: {resp.text}")
-        
-        if not data.get("ok"):
-            raise RuntimeError(f"Edge failure: {data.get('error')}")
-        return data.get("data")
+        # 재시도 로직
+        for attempt in range(max_retries):
+            try:
+                resp = requests.post(
+                    self.base_url, 
+                    headers=headers, 
+                    json=payload,
+                    timeout=timeout,
+                    stream=False  # 스트리밍 비활성화로 연결 안정성 향상
+                )
+                
+                if resp.status_code >= 400:
+                    raise RuntimeError(f"Edge error {resp.status_code}: {resp.text}")
+                
+                # JSON 파싱 시도
+                try:
+                    data = resp.json()
+                except ValueError as e:
+                    raise RuntimeError(f"Edge JSON parse error: {e}, Response: {resp.text}")
+                
+                if not data.get("ok"):
+                    raise RuntimeError(f"Edge failure: {data.get('error')}")
+                return data.get("data")
+                
+            except (requests.exceptions.ChunkedEncodingError, 
+                    requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout) as e:
+                if attempt < max_retries - 1:
+                    print(f"⚠️ 네트워크 오류 발생, 재시도 중... ({attempt + 1}/{max_retries}): {e}")
+                    import time
+                    time.sleep(2 ** attempt)  # 지수 백오프
+                    continue
+                else:
+                    raise RuntimeError(f"네트워크 오류로 인한 요청 실패 (최대 재시도 횟수 초과): {e}")
+            except Exception as e:
+                raise RuntimeError(f"예상치 못한 오류: {e}")
     
 
     # API

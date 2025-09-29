@@ -34,7 +34,7 @@ class ProblemCorrectionService:
         Supabase prompts 테이블에서 교정 프롬프트를 가져옵니다.
         
         Args:
-            category: 프롬프트 카테고리 (learning_concept 등)
+            category: 프롬프트 카테고리 (사용하지 않음, 고정 ID 사용)
             
         Returns:
             str: 교정 프롬프트
@@ -47,30 +47,18 @@ class ProblemCorrectionService:
                 # print("❌ 데이터베이스 연결이 없습니다. 기본 프롬프트를 사용합니다.")
                 return DEFAULT_PROBLEM_CORRECTION_PROMPT
             
-            # learning_concept 카테고리인 경우 특별 ID 사용
-            if category == "learning_concept":
-                # print(f"🎯 learning_concept 카테고리 감지됨!")
-                # print(f"🔍 LEARNING_CONCEPT_PROMPT_ID: {LEARNING_CONCEPT_PROMPT_ID}")
-                
-                prompt = db.get_prompt_by_id(LEARNING_CONCEPT_PROMPT_ID)
-                if prompt:
-                    # print(f"✅ learning_concept 카테고리용 프롬프트 사용 성공: {LEARNING_CONCEPT_PROMPT_ID}")
-                    # print(f"📝 프롬프트 길이: {len(prompt) if prompt else 0} 문자")
-                    return prompt
-                else:
-                    # print(f"❌ learning_concept 프롬프트를 찾을 수 없습니다. 기본 프롬프트를 사용합니다.")
-                    return DEFAULT_PROBLEM_CORRECTION_PROMPT
+            # 고정된 교정용 프롬프트 ID 사용 (수동교정과 동일)
+            CORRECTION_PROMPT_ID = "9e55115e-0198-401d-8633-075bc8a25201"
+            # print(f"🎯 교정용 프롬프트 ID 사용: {CORRECTION_PROMPT_ID}")
             
-            # 카테고리가 지정된 경우 해당 카테고리의 프롬프트 조회
-            if category:
-                prompts = db.get_prompts(category=category)
-                if prompts and len(prompts) > 0:
-                    # print(f"카테고리 '{category}'의 프롬프트 사용")
-                    return prompts[0].get('prompt_text', DEFAULT_PROBLEM_CORRECTION_PROMPT)
-            
-            # 기본 프롬프트 사용
-            # print("기본 교정 프롬프트 사용")
-            return DEFAULT_PROBLEM_CORRECTION_PROMPT
+            prompt = db.get_prompt_by_id(CORRECTION_PROMPT_ID)
+            if prompt:
+                # print(f"✅ 교정용 프롬프트 사용 성공: {CORRECTION_PROMPT_ID}")
+                # print(f"📝 프롬프트 길이: {len(prompt) if prompt else 0} 문자")
+                return prompt
+            else:
+                # print(f"❌ 교정용 프롬프트를 찾을 수 없습니다. 기본 프롬프트를 사용합니다.")
+                return DEFAULT_PROBLEM_CORRECTION_PROMPT
             
         except Exception as e:
             # print(f"프롬프트 조회 중 오류 발생: {e}")
