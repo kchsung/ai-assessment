@@ -110,12 +110,12 @@ async function saveQlearnProblem(supabaseClient, params) {
       topic_summary: cleanValue(params.topic_summary) || '기본 주제 요약',
       title: cleanValue(params.title) || '기본 제목',
       scenario: cleanValue(params.scenario) || '기본 시나리오',
-      goal: params.goal ? JSON.stringify(params.goal) : '[]',
-      first_question: params.first_question ? JSON.stringify(params.first_question) : '[]',
-      requirements: params.requirements ? JSON.stringify(params.requirements) : '[]',
-      constraints: params.constraints ? JSON.stringify(params.constraints) : '[]',
-      guide: params.guide ? JSON.stringify(params.guide) : '{}',
-      evaluation: params.evaluation ? JSON.stringify(params.evaluation) : '[]',
+      goal: params.goal || [],
+      first_question: params.first_question || [],
+      requirements: params.requirements || [],
+      constraints: params.constraints || [],
+      guide: params.guide || {},
+      evaluation: params.evaluation || [],
       task: cleanValue(params.task) || '기본 과제',
       active: params.active !== undefined ? params.active : false,
       created_at: cleanValue(params.created_at) || new Date().toISOString(),
@@ -124,7 +124,7 @@ async function saveQlearnProblem(supabaseClient, params) {
     
     // 선택적 필드들 추가
     if (params.reference && Object.keys(params.reference).length > 0) {
-      problemData.reference = JSON.stringify(params.reference);
+      problemData.reference = params.reference;
     }
     
     // created_by 필드는 유효한 UUID 값이 있는 경우에만 추가
@@ -289,15 +289,8 @@ async function updateQlearnProblem(supabaseClient, params) {
       });
     }
 
-    // JSON 필드들을 문자열로 변환
+    // JSON 필드들은 그대로 유지 (Supabase가 자동으로 JSONB로 처리)
     const updateData = { ...updates };
-    if (updateData.goal) updateData.goal = JSON.stringify(updateData.goal);
-    if (updateData.first_question) updateData.first_question = JSON.stringify(updateData.first_question);
-    if (updateData.requirements) updateData.requirements = JSON.stringify(updateData.requirements);
-    if (updateData.constraints) updateData.constraints = JSON.stringify(updateData.constraints);
-    if (updateData.guide) updateData.guide = JSON.stringify(updateData.guide);
-    if (updateData.evaluation) updateData.evaluation = JSON.stringify(updateData.evaluation);
-    if (updateData.reference) updateData.reference = JSON.stringify(updateData.reference);
     
     updateData.updated_at = new Date().toISOString();
 

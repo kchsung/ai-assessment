@@ -324,27 +324,30 @@ def extract_json_from_text(text: str) -> dict:
     return {}
 
 def ensure_array_format(data) -> list:
-    """데이터를 올바른 배열 형식으로 변환"""
+    """데이터를 올바른 배열 형식으로 변환 (JSONB 호환)"""
     if data is None:
         return []
     
     if isinstance(data, list):
-        # 이미 배열인 경우, 각 요소가 문자열인지 확인하고 변환
-        return [str(item) for item in data if item is not None and str(item).strip()]
+        # 이미 배열인 경우, 각 요소를 그대로 유지 (이스케이프 방지)
+        return [item for item in data if item is not None and str(item).strip()]
     
     if isinstance(data, str):
         # 문자열인 경우, JSON 파싱 시도 후 실패하면 단일 요소 배열로 변환
         try:
             parsed = json.loads(data)
             if isinstance(parsed, list):
-                return [str(item) for item in parsed if item is not None and str(item).strip()]
+                # 파싱된 배열의 각 요소를 그대로 유지
+                return [item for item in parsed if item is not None and str(item).strip()]
             else:
-                return [str(parsed)] if str(parsed).strip() else []
+                # 단일 값인 경우 그대로 반환
+                return [parsed] if str(parsed).strip() else []
         except (json.JSONDecodeError, TypeError):
+            # JSON 파싱 실패 시 원본 문자열을 그대로 반환
             return [data] if data.strip() else []
     
-    # 기타 타입인 경우 문자열로 변환하여 단일 요소 배열로 반환
-    return [str(data)] if str(data).strip() else []
+    # 기타 타입인 경우 그대로 단일 요소 배열로 반환
+    return [data] if str(data).strip() else []
 
 def map_question_to_qlearn_format(question: dict) -> dict:
     """questions 테이블 데이터를 qlearn_problems 형식으로 매핑"""
