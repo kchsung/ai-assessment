@@ -40,7 +40,9 @@ class EdgeDBClient:
                 try:
                     data = resp.json()
                 except ValueError as e:
-                    raise RuntimeError(f"Edge JSON parse error: {e}, Response: {resp.text}")
+                    # 응답 텍스트의 일부만 표시 (너무 길면 잘라냄)
+                    response_preview = resp.text[:500] + "..." if len(resp.text) > 500 else resp.text
+                    raise RuntimeError(f"Edge JSON parse error: {e}, Response preview: {response_preview}")
                 
                 if not data.get("ok"):
                     raise RuntimeError(f"Edge failure: {data.get('error')}")

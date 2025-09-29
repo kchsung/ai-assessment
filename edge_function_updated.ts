@@ -222,6 +222,24 @@ async function getQlearnProblems(supabaseClient, filters = {}) {
 
     // 데이터 변환 (JSON 필드들 파싱)
     const transformedData = (data || []).map((r) => {
+      // 안전한 JSON 파싱 함수
+      const safeJsonParse = (jsonString, defaultValue) => {
+        if (!jsonString) return defaultValue;
+        try {
+          return JSON.parse(jsonString);
+        } catch (error) {
+          const preview = typeof jsonString === 'string' ? jsonString.substring(0, 50) : String(jsonString).substring(0, 50);
+          console.warn(`JSON 파싱 오류 (${preview}...):`, error.message);
+          // JSON 파싱 실패 시 원본 문자열을 배열로 감싸서 반환 (데이터 손실 방지)
+          if (Array.isArray(defaultValue)) {
+            return [jsonString]; // 문자열을 배열로 감싸서 반환
+          } else if (typeof defaultValue === 'object' && defaultValue !== null) {
+            return { raw: jsonString }; // 문자열을 객체로 감싸서 반환
+          }
+          return jsonString; // 기본적으로 원본 문자열 반환
+        }
+      };
+
       return {
         id: r.id,
         lang: r.lang,
@@ -232,17 +250,17 @@ async function getQlearnProblems(supabaseClient, filters = {}) {
         topic_summary: r.topic_summary,
         title: r.title,
         scenario: r.scenario,
-        goal: r.goal ? JSON.parse(r.goal) : [],
-        first_question: r.first_question ? JSON.parse(r.first_question) : [],
-        requirements: r.requirements ? JSON.parse(r.requirements) : [],
-        constraints: r.constraints ? JSON.parse(r.constraints) : [],
-        guide: r.guide ? JSON.parse(r.guide) : {},
-        evaluation: r.evaluation ? JSON.parse(r.evaluation) : [],
+        goal: safeJsonParse(r.goal, []),
+        first_question: safeJsonParse(r.first_question, []),
+        requirements: safeJsonParse(r.requirements, []),
+        constraints: safeJsonParse(r.constraints, []),
+        guide: safeJsonParse(r.guide, {}),
+        evaluation: safeJsonParse(r.evaluation, []),
         task: r.task,
         created_by: r.created_by,
         created_at: r.created_at,
         updated_at: r.updated_at,
-        reference: r.reference ? JSON.parse(r.reference) : {},
+        reference: safeJsonParse(r.reference, {}),
         active: r.active
       };
     });
@@ -577,7 +595,25 @@ async function getQuestions(supabaseClient, filters = {}) {
     }
     // 데이터 변환
     const transformedData = (data || []).map((r) => {
-      const metadata = r.metadata ? JSON.parse(r.metadata) : {};
+      // 안전한 JSON 파싱 함수
+      const safeJsonParse = (jsonString, defaultValue) => {
+        if (!jsonString) return defaultValue;
+        try {
+          return JSON.parse(jsonString);
+        } catch (error) {
+          const preview = typeof jsonString === 'string' ? jsonString.substring(0, 50) : String(jsonString).substring(0, 50);
+          console.warn(`JSON 파싱 오류 (${preview}...):`, error.message);
+          // JSON 파싱 실패 시 원본 문자열을 배열로 감싸서 반환 (데이터 손실 방지)
+          if (Array.isArray(defaultValue)) {
+            return [jsonString]; // 문자열을 배열로 감싸서 반환
+          } else if (typeof defaultValue === 'object' && defaultValue !== null) {
+            return { raw: jsonString }; // 문자열을 객체로 감싸서 반환
+          }
+          return jsonString; // 기본적으로 원본 문자열 반환
+        }
+      };
+
+      const metadata = safeJsonParse(r.metadata, {});
       // 새로운 필드들을 메타데이터에 병합
       const newFields = {
         lang: r.lang || 'kr',
@@ -586,14 +622,14 @@ async function getQuestions(supabaseClient, filters = {}) {
         time_limit: r.time_limit,
         topic_summary: r.topic_summary,
         scenario: r.scenario,
-        goal: r.goal ? JSON.parse(r.goal) : [],
+        goal: safeJsonParse(r.goal, []),
         task: r.task,
-        reference: r.reference ? JSON.parse(r.reference) : {},
-        first_question: r.first_question ? JSON.parse(r.first_question) : [],
-        constraints: r.constraints ? JSON.parse(r.constraints) : [],
-        guide: r.guide ? JSON.parse(r.guide) : {},
-        evaluation: r.evaluation ? JSON.parse(r.evaluation) : [],
-        steps: r.steps ? JSON.parse(r.steps) : []
+        reference: safeJsonParse(r.reference, {}),
+        first_question: safeJsonParse(r.first_question, []),
+        constraints: safeJsonParse(r.constraints, []),
+        guide: safeJsonParse(r.guide, {}),
+        evaluation: safeJsonParse(r.evaluation, []),
+        steps: safeJsonParse(r.steps, [])
       };
       // None이 아닌 값들만 메타데이터에 추가
       Object.entries(newFields).forEach(([key, value]) => {
@@ -607,10 +643,10 @@ async function getQuestions(supabaseClient, filters = {}) {
         difficulty: r.difficulty,
         type: r.type,
         question: r.question_text,
-        options: r.options ? JSON.parse(r.options) : null,
+        options: safeJsonParse(r.options, null),
         correct_answer: r.correct_answer,
-        requirements: r.requirements ? JSON.parse(r.requirements) : null,
-        evaluation_criteria: r.evaluation_criteria ? JSON.parse(r.evaluation_criteria) : null,
+        requirements: safeJsonParse(r.requirements, null),
+        evaluation_criteria: safeJsonParse(r.evaluation_criteria, null),
         ai_generated: r.ai_generated,
         metadata: metadata,
         review_done: r.review_done || false
