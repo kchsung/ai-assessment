@@ -122,7 +122,7 @@ async function saveQlearnProblem(supabaseClient, params) {
     const problemData = {
       lang: cleanValue(params.lang) || 'kr',
       category: cleanValue(params.category) || 'life',
-      topic: cleanValue(params.topic) || '기본 주제',
+      role: cleanValue(params.role) || '기본 역할',
       difficulty: difficulty,
       time_limit: cleanValue(params.time_limit) || getTimeLimitByDifficulty(difficulty),
       topic_summary: cleanValue(params.topic_summary) || '기본 주제 요약',
@@ -225,7 +225,7 @@ async function getQlearnProblems(supabaseClient, filters = {}) {
     if (filters.id) query = query.eq('id', filters.id);
     if (filters.category) query = query.eq('category', filters.category);
     if (filters.difficulty) query = query.eq('difficulty', filters.difficulty);
-    if (filters.topic) query = query.eq('topic', filters.topic);
+    if (filters.role) query = query.eq('role', filters.role);
     if (filters.active !== undefined) query = query.eq('active', filters.active);
     if (filters.lang) query = query.eq('lang', filters.lang);
 
@@ -262,7 +262,7 @@ async function getQlearnProblems(supabaseClient, filters = {}) {
         id: r.id,
         lang: r.lang,
         category: r.category,
-        topic: r.topic,
+        role: r.role,
         difficulty: r.difficulty,
         time_limit: r.time_limit,
         topic_summary: r.topic_summary,
@@ -580,7 +580,7 @@ async function saveQuestion(supabaseClient, q) {
       // 새로운 필드들
       lang: metadata.lang || 'kr',
       category: metadata.category || 'interview',
-      topic: metadata.topic || null,
+      role: metadata.role || null,
       time_limit: metadata.time_limit || metadata.estimatedTime || null,
       topic_summary: metadata.topic_summary || null,
       scenario: metadata.scenario || null,
@@ -633,7 +633,7 @@ async function getQuestions(supabaseClient, filters = {}) {
     if (filters.area) query = query.eq('area', filters.area);
     if (filters.difficulty) query = query.eq('difficulty', filters.difficulty);
     if (filters.type) query = query.eq('type', filters.type);
-    if (filters.topic) query = query.eq('topic', filters.topic);
+    if (filters.role) query = query.eq('role', filters.role);
     if (filters.category) query = query.eq('category', filters.category);
     if (filters.review_done !== undefined) {
       // boolean 값을 명시적으로 처리
@@ -672,7 +672,7 @@ async function getQuestions(supabaseClient, filters = {}) {
       const newFields = {
         lang: r.lang || 'kr',
         category: r.category || 'interview',
-        topic: r.topic,
+        role: r.role,
         time_limit: r.time_limit,
         topic_summary: r.topic_summary,
         scenario: r.scenario,

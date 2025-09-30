@@ -75,26 +75,12 @@ class AIQuestionGenerator:
         # 난이도별 평가 기준 추가
         difficulty_guides = "\n\n난이도별 평가 기준:\n"
         for key, guide in self.default_difficulty_guides.items():
-            difficulty_name = {
-                "very_easy": "very easy",
-                "easy": "easy", 
-                "normal": "normal",
-                "hard": "hard",
-                "very_hard": "very hard"
-            }.get(key, key)
-            difficulty_guides += f"- {difficulty_name}: {guide}\n"
+            difficulty_guides += f"- {key}: {guide}\n"
         
         # 난이도별 시간 제한 추가
         time_mapping = "\n난이도별 시간 제한:\n"
         for key, time_limit in self.difficulty_time_mapping.items():
-            difficulty_name = {
-                "very_easy": "very easy",
-                "easy": "easy",
-                "normal": "normal", 
-                "hard": "hard",
-                "very_hard": "very hard"
-            }.get(key, key)
-            time_mapping += f"- {difficulty_name}: {time_limit}\n"
+            time_mapping += f"- {key}: {time_limit}\n"
         
         # 스텝 구성 규칙 추가
         step_rules = "\n스텝 구성 규칙:\n"
@@ -120,10 +106,10 @@ class AIQuestionGenerator:
         """Multiple choice problem generation prompt"""
         # work_application, daily_problem_solving, pharma_distribution, learning_concept의 경우 topic을 동적으로 설정
         if area in ["work_application", "daily_problem_solving", "pharma_distribution", "learning_concept"]:
-            topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀', '학습자', '교육과정' 등)"
+            topic_instruction = f"role 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀', '학습자', '교육과정' 등)"
             area_display = f"{self.assessment_areas[area]} (구체적인 직무/상황으로 설정)"
         else:
-            topic_instruction = f"topic 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
+            topic_instruction = f"role 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
             area_display = self.assessment_areas[area]
         
         return get_multiple_choice_prompt(
@@ -141,11 +127,11 @@ class AIQuestionGenerator:
         """Subjective problem generation prompt"""
         # work_application, daily_problem_solving, pharma_distribution, learning_concept의 경우 topic을 동적으로 설정
         if area in ["work_application", "daily_problem_solving", "pharma_distribution", "learning_concept"]:
-            topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀', '학습자', '교육과정' 등)"
+            topic_instruction = f"role 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀', '학습자', '교육과정' 등)"
             area_display = f"{self.assessment_areas[area]} (구체적인 직무/상황으로 설정)"
             task_template = "나는 현재 [구체적인 직무/상황] 상황에 있다. 다음 상황에서..."
         else:
-            topic_instruction = f"topic 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
+            topic_instruction = f"role 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
             area_display = self.assessment_areas[area]
             task_template = f"나는 현재 {self.assessment_areas[area]} 상황에 있다. 다음 상황에서..."
         
@@ -212,6 +198,7 @@ class AIQuestionGenerator:
             if question_type == "multiple_choice":
                 q = {
                     "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
+                    "area": area,  # 원본 area 값 저장
                     "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
                     "difficulty": DIFFICULTY_LEVELS[difficulty],
                     "type": question_type,
@@ -222,7 +209,7 @@ class AIQuestionGenerator:
                         "model": model,
                         "lang": qdata.get("lang", "kr"),
                         "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
-                        "topic": qdata.get("topic", ""),
+                        "role": qdata.get("role", ""),
                         "estimatedTime": qdata.get("estimatedTime", ""),
                         "scenario": qdata.get("scenario", ""),
                         "reference": qdata.get("reference", {}),
@@ -232,6 +219,7 @@ class AIQuestionGenerator:
             else:  # subjective
                 q = {
                     "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
+                    "area": area,  # 원본 area 값 저장
                     "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
                     "difficulty": DIFFICULTY_LEVELS[difficulty],
                     "type": question_type,
@@ -242,7 +230,7 @@ class AIQuestionGenerator:
                         "model": model,
                         "lang": qdata.get("lang", "kr"),
                         "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
-                        "topic": qdata.get("topic", ""),
+                        "role": qdata.get("role", ""),
                         "time_limit": qdata.get("time_limit", ""),
                         "topic_summary": qdata.get("topic_summary", ""),
                         "scenario": qdata.get("scenario", ""),

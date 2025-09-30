@@ -404,13 +404,14 @@ def map_question_to_qlearn_format(question: dict) -> dict:
     # 매핑된 데이터 구성
     mapped_data = {
         "id": problem_id,
+        "area": question.get("area", ""),  # area 필드 추가
         "lang": metadata.get("lang", "kr"),
         "category": metadata.get("category", question.get("category", "")),
-        "topic": metadata.get("topic", ""),
+        "role": metadata.get("role", ""),
         "difficulty": valid_difficulty,  # 변환된 difficulty 사용
         "time_limit": time_limit,
-        "topic_summary": metadata.get("topic", ""),
-        "title": question.get("question", metadata.get("topic", "")),
+        "topic_summary": metadata.get("role", ""),
+        "title": question.get("question", metadata.get("role", "")),
         "scenario": metadata.get("scenario", ""),
         "goal": ensure_array_format(metadata.get("goal", [])),
         "first_question": ensure_array_format(metadata.get("first_question", [])),

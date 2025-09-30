@@ -61,8 +61,7 @@ def render(st):
             "평가 영역 필터",
             options=["전체"] + list(ASSESSMENT_AREAS.keys()),
             format_func=format_review_area,
-            key="gemini_manual_review_area_filter_v2",
-            index=0
+            key="gemini_manual_review_area_filter_v2"
         )
     
     with col2:
@@ -70,8 +69,7 @@ def render(st):
         active_filter = st.selectbox(
             "활성 상태 필터", 
             options=["전체", "비활성", "활성"],
-            key="gemini_manual_review_active_filter_v2",
-            index=0
+            key="gemini_manual_review_active_filter_v2"
         )
     
     # 필터 적용하여 문제 가져오기
@@ -155,7 +153,7 @@ def render(st):
                     # 검토할 내용 구성
                     review_content = f"""
 문제 제목: {selected_problem.get('title', '')}
-주제: {selected_problem.get('topic', '')}
+역할: {selected_problem.get('role', '')}
 난이도: {selected_problem.get('difficulty', '')}
 시나리오: {selected_problem.get('scenario', '')}
 목표: {selected_problem.get('goal', [])}
@@ -249,7 +247,7 @@ def render(st):
                 changes_found = False
                 
                 # 주요 필드들 비교
-                key_fields = ['title', 'topic', 'difficulty', 'scenario', 'goal', 'task', 'requirements', 'constraints', 'guide', 'evaluation']
+                key_fields = ['title', 'role', 'difficulty', 'scenario', 'goal', 'task', 'requirements', 'constraints', 'guide', 'evaluation']
                 
                 for field in key_fields:
                     original_value = original_data.get(field, "")

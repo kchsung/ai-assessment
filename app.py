@@ -26,7 +26,7 @@ from src.ui.tabs.tab_gemini_manual_review import render as render_gemini_manual_
 from src.ui.tabs.tab_gemini_auto_review import render as render_gemini_auto_review
 from src.ui.styles.css_loader import load_all_styles
 # 탭 이름 정의
-TAB_NAMES = ["📝 문제 생성", "📚 문제 은행", "💬 피드백 & HITL", "📊 분석 대시보드", "🤖 문제 자동생성", "🔍 문제 검토(JSON)", "🤖 자동 문제 검토", "🔍 제미나이 수동 검토", "🤖 제미나이 자동 검토", "⚙️ 설정"]
+TAB_NAMES = ["📝 문제 생성", "🤖 문제 자동생성", "📚 문제 은행", "💬 피드백 & HITL", "📊 분석 대시보드", "🔍 문제 검토(JSON)", "🤖 자동 문제 검토", "🔍 제미나이 수동 검토", "🤖 제미나이 자동 검토", "⚙️ 설정"]
 
 
 st.set_page_config(page_title="AI 활용능력평가 에이전트 v2.0", page_icon="🤖", layout="wide")
@@ -102,16 +102,16 @@ with st.sidebar:
             st.success("Edge Function 초기화 완료")
 
 # 이제 탭을 생성 (위쪽 레이아웃이 rerun에도 변하지 않음)
-TAB_NAMES = ["📝 문제 생성", "📚 문제 은행", "💬 피드백 & HITL", "📊 분석 대시보드",
-             "🤖 문제 자동생성", "🔍 문제 검토(JSON)", "🤖 자동 문제 검토",
+TAB_NAMES = ["📝 문제 생성", "🤖 문제 자동생성", "📚 문제 은행", "💬 피드백 & HITL", "📊 분석 대시보드",
+             "🔍 문제 검토(JSON)", "🤖 자동 문제 검토",
              "🔍 제미나이 수동 검토", "🤖 제미나이 자동 검토", "⚙️ 설정"]
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs(TAB_NAMES)
 
 with tab1:  render_create(st)
-with tab2:  render_bank(st)
-with tab3:  render_feedback(st)
-with tab4:  render_dashboard(st)
-with tab5:  render_auto_generate(st)
+with tab2:  render_auto_generate(st)
+with tab3:  render_bank(st)
+with tab4:  render_feedback(st)
+with tab5:  render_dashboard(st)
 with tab6:  render_review(st)
 with tab7:  render_problem_correction(st)
 with tab8:  render_gemini_manual_review(st)

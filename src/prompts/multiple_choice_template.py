@@ -41,7 +41,7 @@ def get_multiple_choice_prompt(area_display: str, difficulty_display: str, guide
   "lang": "kr",
   "category": "{assessment_area}",
   "problemTitle": "문제 제목",
-  "topic": "{assessment_area if '구체적인 직무/상황' not in topic_instruction else '구체적인 직무/상황'}",
+  "role": "{assessment_area if '구체적인 직무/상황' not in topic_instruction else '구체적인 직무/상황'}",
   "difficulty": "{difficulty}",
   "estimatedTime": "{time_limit}",
   "scenario": "문제 상황 및 배경 설명",
