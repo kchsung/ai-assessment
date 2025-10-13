@@ -23,7 +23,7 @@ def get_subjective_prompt(area_display: str, difficulty_display: str, guide: str
   "lang": "kr",
   "category": "{assessment_area}",
   "title": "문제 제목",
-  "role": "{assessment_area if '구체적인 직무/상황' not in topic_instruction else '구체적인 직무/상황'}",
+  "topic": "{assessment_area if '구체적인 직무/상황' not in topic_instruction else '구체적인 직무/상황'}",
   "difficulty": "{difficulty}",
   "time_limit": "{time_limit}",
   "topic_summary": "주제 요약",

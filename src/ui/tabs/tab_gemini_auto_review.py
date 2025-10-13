@@ -228,7 +228,7 @@ def render(st):
                     # 1. 제미나이로 문제 검토
                     review_content = f"""
 문제 제목: {current_problem.get('title', '')}
-역할: {current_problem.get('role', '')}
+주제: {current_problem.get('topic', '')}
 난이도: {current_problem.get('difficulty', '')}
 시나리오: {current_problem.get('scenario', '')}
 목표: {current_problem.get('goal', [])}
@@ -442,7 +442,7 @@ def batch_process_all_problems(st, problems, gemini_client):
                 # 1. 제미나이로 문제 검토
                 review_content = f"""
 문제 제목: {current_problem.get('title', '')}
-역할: {current_problem.get('role', '')}
+주제: {current_problem.get('topic', '')}
 난이도: {current_problem.get('difficulty', '')}
 시나리오: {current_problem.get('scenario', '')}
 목표: {current_problem.get('goal', [])}

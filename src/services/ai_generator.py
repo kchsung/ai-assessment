@@ -106,10 +106,10 @@ class AIQuestionGenerator:
         """Multiple choice problem generation prompt"""
         # work_application, daily_problem_solving, pharma_distribution, learning_concept의 경우 topic을 동적으로 설정
         if area in ["work_application", "daily_problem_solving", "pharma_distribution", "learning_concept"]:
-            topic_instruction = f"role 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀', '학습자', '교육과정' 등)"
+            topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀', '학습자', '교육과정' 등)"
             area_display = f"{self.assessment_areas[area]} (구체적인 직무/상황으로 설정)"
         else:
-            topic_instruction = f"role 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
+            topic_instruction = f"topic 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
             area_display = self.assessment_areas[area]
         
         return get_multiple_choice_prompt(
@@ -127,11 +127,11 @@ class AIQuestionGenerator:
         """Subjective problem generation prompt"""
         # work_application, daily_problem_solving, pharma_distribution, learning_concept의 경우 topic을 동적으로 설정
         if area in ["work_application", "daily_problem_solving", "pharma_distribution", "learning_concept"]:
-            topic_instruction = f"role 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀', '학습자', '교육과정' 등)"
+            topic_instruction = f"topic 필드에는 {self.assessment_areas[area]}와 관련된 구체적인 직무나 상황을 설정해주세요 (예: '마케팅 담당자', '고객 서비스', '일상 업무 효율화', '제약회사 영업팀', '유통업체 물류팀', '학습자', '교육과정' 등)"
             area_display = f"{self.assessment_areas[area]} (구체적인 직무/상황으로 설정)"
             task_template = "나는 현재 [구체적인 직무/상황] 상황에 있다. 다음 상황에서..."
         else:
-            topic_instruction = f"role 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
+            topic_instruction = f"topic 필드에는 '{self.assessment_areas[area]}'를 그대로 사용해주세요"
             area_display = self.assessment_areas[area]
             task_template = f"나는 현재 {self.assessment_areas[area]} 상황에 있다. 다음 상황에서..."
         
@@ -209,7 +209,7 @@ class AIQuestionGenerator:
                         "model": model,
                         "lang": qdata.get("lang", "kr"),
                         "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
-                        "role": qdata.get("role", ""),
+                        "topic": qdata.get("topic", ""),
                         "estimatedTime": qdata.get("estimatedTime", ""),
                         "scenario": qdata.get("scenario", ""),
                         "reference": qdata.get("reference", {}),
@@ -230,7 +230,7 @@ class AIQuestionGenerator:
                         "model": model,
                         "lang": qdata.get("lang", "kr"),
                         "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
-                        "role": qdata.get("role", ""),
+                        "topic": qdata.get("topic", ""),
                         "time_limit": qdata.get("time_limit", ""),
                         "topic_summary": qdata.get("topic_summary", ""),
                         "scenario": qdata.get("scenario", ""),

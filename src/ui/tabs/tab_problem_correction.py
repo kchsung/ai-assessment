@@ -306,11 +306,11 @@ def map_question_to_qlearn_format(question: dict) -> dict:
         "area": question.get("area", ""),  # area 필드 추가
         "lang": metadata.get("lang", "kr"),
         "category": metadata.get("category", question.get("category", "")),
-        "role": metadata.get("role", ""),
+        "topic": metadata.get("topic", ""),
         "difficulty": valid_difficulty,  # 변환된 difficulty 사용
         "time_limit": time_limit,
-        "topic_summary": metadata.get("role", ""),
-        "title": question.get("question", metadata.get("role", "")),
+        "topic_summary": metadata.get("topic", ""),
+        "title": question.get("question", metadata.get("topic", "")),
         "scenario": metadata.get("scenario", ""),
         "goal": ensure_array_format(metadata.get("goal", [])),
         "first_question": ensure_array_format(metadata.get("first_question", [])),
