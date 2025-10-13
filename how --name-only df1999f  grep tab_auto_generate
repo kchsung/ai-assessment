@@ -1,0 +1,30 @@
+[33mcommit df1999f5f56d4059376a047b7b5a7a70d3f8807d[m
+Author: kchsung <kichan.sung@gmail.com>
+Date:   Sat Sep 20 18:41:01 2025 +0900
+
+    문제 자동생성 탭 추가 및 UI 개선
+    
+    - 새로운 '문제 자동생성' 탭 추가
+    - 좌측: 평가영역/난이도/유형 선택 (랜덤 옵션 포함), 문제 개수 설정
+    - 우측: 생성된 문제들을 카드 형태로 표시
+    - 자동생성/중지 버튼으로 대량 문제 생성 가능
+    - 생성된 문제는 자동으로 Supabase DB에 저장
+    - 키보드 힌트 토큰(key:, keyboard_arrow_*) 제거 기능 추가
+    - 카드 UI로 변경하여 접는 UI 대신 깔끔한 표시
+    - 제목 크기 축소 및 불필요한 메트릭 박스 제거
+
+.env
+.streamlit/config.toml
+.streamlit/secrets.toml
+README.md
+app.py
+src/prompts/__pycache__/__init__.cpython-312.pyc
+src/prompts/__pycache__/default_prompts.cpython-312.pyc
+src/prompts/__pycache__/multiple_choice_template.cpython-312.pyc
+src/prompts/__pycache__/subjective_template.cpython-312.pyc
+src/services/__pycache__/ai_generator.cpython-312.pyc
+src/services/ai_generator.py
+src/ui/__pycache__/tab_feedback.cpython-312.pyc
+src/ui/tabs/__pycache__/tab_auto_generate.cpython-312.pyc
+src/ui/tabs/__pycache__/tab_settings.cpython-312.pyc
+src/ui/tabs/tab_auto_generate.py
