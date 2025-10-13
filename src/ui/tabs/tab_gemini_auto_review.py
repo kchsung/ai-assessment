@@ -32,30 +32,42 @@ def render(st):
         try:
             # Streamlit Cloud에서는 st.secrets 사용, 로컬에서는 환경변수 사용
             api_key = None
+            print("🔍 [DEBUG] 제미나이 API 키 감지 시작 (자동검토)")
             
             # 1순위: st.secrets 직접 접근
             try:
                 api_key = st.secrets["GEMINI_API_KEY"]
-            except:
+                print(f"🔍 [DEBUG] st.secrets 직접 접근 성공: 길이={len(api_key) if api_key else 0}")
+            except Exception as e:
+                print(f"🔍 [DEBUG] st.secrets 직접 접근 실패: {e}")
                 pass
             
             # 2순위: st.secrets.get() 방식
             if not api_key:
                 try:
                     api_key = st.secrets.get("GEMINI_API_KEY")
-                except:
+                    print(f"🔍 [DEBUG] st.secrets.get() 성공: 길이={len(api_key) if api_key else 0}")
+                except Exception as e:
+                    print(f"🔍 [DEBUG] st.secrets.get() 실패: {e}")
                     pass
             
             # 3순위: 환경변수 fallback
             if not api_key:
                 import os
                 api_key = os.getenv("GEMINI_API_KEY")
+                print(f"🔍 [DEBUG] 환경변수 접근: 길이={len(api_key) if api_key else 0}")
             
             # API 키가 존재하고 빈 문자열이 아닌지 확인
+            print(f"🔍 [DEBUG] 최종 API 키 상태: {api_key is not None}, 길이={len(api_key) if api_key else 0}")
             if api_key and len(api_key.strip()) > 0:
+                print("🔍 [DEBUG] API 키 유효성 검증 통과")
                 gemini_client = GeminiClient()
                 gemini_available = True
+                print("🔍 [DEBUG] GeminiClient 초기화 성공")
+            else:
+                print("🔍 [DEBUG] API 키 유효성 검증 실패")
         except Exception as e:
+            print(f"🔍 [DEBUG] 전체 예외 발생: {e}")
             gemini_available = False
     
     if not gemini_available:

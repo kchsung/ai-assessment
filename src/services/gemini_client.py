@@ -27,17 +27,43 @@ class GeminiClient:
         if GeminiClient._initialized:
             return
             
-        # 직접 환경 변수에서 가져오기
-        api_key = os.getenv("GEMINI_API_KEY")
-        # print(f"DEBUG: Direct os.getenv('GEMINI_API_KEY'): {bool(api_key)}")
+        # Streamlit Cloud에서는 st.secrets 사용, 로컬에서는 환경변수 사용
+        api_key = None
         
+        # 1순위: st.secrets 직접 접근
+        try:
+            import streamlit as st
+            api_key = st.secrets["GEMINI_API_KEY"]
+            print(f"🔍 [DEBUG] GeminiClient: st.secrets 직접 접근 성공")
+        except Exception as e:
+            print(f"🔍 [DEBUG] GeminiClient: st.secrets 직접 접근 실패: {e}")
+            pass
+        
+        # 2순위: st.secrets.get() 방식
         if not api_key:
-            # get_secret도 시도
+            try:
+                import streamlit as st
+                api_key = st.secrets.get("GEMINI_API_KEY")
+                print(f"🔍 [DEBUG] GeminiClient: st.secrets.get() 성공")
+            except Exception as e:
+                print(f"🔍 [DEBUG] GeminiClient: st.secrets.get() 실패: {e}")
+                pass
+        
+        # 3순위: get_secret 방식
+        if not api_key:
             api_key = get_secret("GEMINI_API_KEY")
-            # print(f"DEBUG: get_secret('GEMINI_API_KEY'): {bool(api_key)}")
+            print(f"🔍 [DEBUG] GeminiClient: get_secret 성공")
+        
+        # 4순위: 환경변수 fallback
+        if not api_key:
+            api_key = os.getenv("GEMINI_API_KEY")
+            print(f"🔍 [DEBUG] GeminiClient: 환경변수 접근")
         
         if not api_key:
+            print("🔍 [DEBUG] GeminiClient: 모든 API 키 접근 방법 실패")
             raise RuntimeError("GEMINI_API_KEY가 설정되지 않았습니다")
+        
+        print(f"🔍 [DEBUG] GeminiClient: API 키 획득 성공, 길이={len(api_key)}")
         
         genai.configure(api_key=api_key)
         
