@@ -32,19 +32,27 @@ def render(st):
         try:
             # Streamlit Cloud에서는 st.secrets 사용, 로컬에서는 환경변수 사용
             api_key = None
+            
+            # 1순위: st.secrets 직접 접근
             try:
-                # Streamlit Cloud Secrets 접근 방식
                 api_key = st.secrets["GEMINI_API_KEY"]
             except:
+                pass
+            
+            # 2순위: st.secrets.get() 방식
+            if not api_key:
                 try:
-                    # 대안: st.secrets.get() 방식
                     api_key = st.secrets.get("GEMINI_API_KEY")
                 except:
-                    # 로컬 환경변수 fallback
-                    import os
-                    api_key = os.getenv("GEMINI_API_KEY")
+                    pass
             
-            if api_key:
+            # 3순위: 환경변수 fallback
+            if not api_key:
+                import os
+                api_key = os.getenv("GEMINI_API_KEY")
+            
+            # API 키가 존재하고 빈 문자열이 아닌지 확인
+            if api_key and len(api_key.strip()) > 0:
                 gemini_client = GeminiClient()
                 gemini_available = True
         except Exception as e:

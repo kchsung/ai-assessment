@@ -30,19 +30,27 @@ def render(st):
         try:
             # Streamlit Cloud에서는 st.secrets 사용, 로컬에서는 환경변수 사용
             api_key = None
+            
+            # 1순위: st.secrets 직접 접근
             try:
-                # Streamlit Cloud Secrets 접근 방식
                 api_key = st.secrets["GEMINI_API_KEY"]
             except:
+                pass
+            
+            # 2순위: st.secrets.get() 방식
+            if not api_key:
                 try:
-                    # 대안: st.secrets.get() 방식
                     api_key = st.secrets.get("GEMINI_API_KEY")
                 except:
-                    # 로컬 환경변수 fallback
-                    import os
-                    api_key = os.getenv("GEMINI_API_KEY")
+                    pass
             
-            if api_key:
+            # 3순위: 환경변수 fallback
+            if not api_key:
+                import os
+                api_key = os.getenv("GEMINI_API_KEY")
+            
+            # API 키가 존재하고 빈 문자열이 아닌지 확인
+            if api_key and len(api_key.strip()) > 0:
                 gemini_client = GeminiClient()
                 gemini_available = True
         except Exception as e:
@@ -54,31 +62,6 @@ def render(st):
         else:
             st.warning("⚠️ 제미나이 API 키가 설정되지 않았습니다. 내용 검토 기능을 사용할 수 없습니다.")
             
-            # 디버깅 정보 (임시)
-            with st.expander("🔍 디버깅 정보 (임시)"):
-                try:
-                    st.write("st.secrets keys:", list(st.secrets.keys()) if hasattr(st.secrets, 'keys') else "No keys method")
-                except Exception as e:
-                    st.write("st.secrets 접근 오류:", str(e))
-                
-                try:
-                    import os
-                    st.write("환경변수 GEMINI_API_KEY:", "설정됨" if os.getenv("GEMINI_API_KEY") else "설정되지 않음")
-                except Exception as e:
-                    st.write("환경변수 확인 오류:", str(e))
-                
-                # API 키 값 직접 확인
-                try:
-                    api_key_direct = st.secrets["GEMINI_API_KEY"]
-                    st.write("st.secrets['GEMINI_API_KEY'] 직접 접근:", f"길이: {len(api_key_direct) if api_key_direct else 0}")
-                except Exception as e:
-                    st.write("st.secrets['GEMINI_API_KEY'] 직접 접근 오류:", str(e))
-                
-                try:
-                    api_key_get = st.secrets.get("GEMINI_API_KEY")
-                    st.write("st.secrets.get('GEMINI_API_KEY'):", f"길이: {len(api_key_get) if api_key_get else 0}")
-                except Exception as e:
-                    st.write("st.secrets.get('GEMINI_API_KEY') 오류:", str(e))
     
     # 1단계: qlearn_problems 테이블에서 문제 가져오기
     st.markdown("### 1단계: qlearn_problems 테이블에서 문제 가져오기")
