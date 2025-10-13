@@ -79,18 +79,34 @@ class GeminiClient:
             temperature=temperature
         )
         
-        # ThinkingConfig 설정 (gemini-2.5-pro에서 지원)
-        thinking_config = genai.types.ThinkingConfig(
-            thinking_budget=-1,  # 무제한 사고 예산
-        )
+        # ThinkingConfig 설정 (gemini-2.5-pro에서 지원, 버전에 따라 선택적 사용)
+        thinking_config = None
+        try:
+            if hasattr(genai.types, 'ThinkingConfig'):
+                thinking_config = genai.types.ThinkingConfig(
+                    thinking_budget=-1,  # 무제한 사고 예산
+                )
+                print(f"🔍 [DEBUG] ThinkingConfig 사용 가능")
+            else:
+                print(f"🔍 [DEBUG] ThinkingConfig 사용 불가능 (라이브러리 버전 문제)")
+        except Exception as e:
+            print(f"🔍 [DEBUG] ThinkingConfig 생성 실패: {e}")
+            thinking_config = None
         
         try:
-            self.model = genai.GenerativeModel(
-                model_name,
-                generation_config=generation_config,
-                thinking_config=thinking_config
-            )
-            print(f"✅ 제미나이 모델 초기화 성공: {model_name}")
+            if thinking_config:
+                self.model = genai.GenerativeModel(
+                    model_name,
+                    generation_config=generation_config,
+                    thinking_config=thinking_config
+                )
+                print(f"✅ 제미나이 모델 초기화 성공 (ThinkingConfig 포함): {model_name}")
+            else:
+                self.model = genai.GenerativeModel(
+                    model_name,
+                    generation_config=generation_config
+                )
+                print(f"✅ 제미나이 모델 초기화 성공 (ThinkingConfig 제외): {model_name}")
         except Exception as e:
             print(f"❌ 모델 {model_name} 초기화 실패: {e}")
             
