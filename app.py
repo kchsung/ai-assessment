@@ -86,21 +86,21 @@ with header:
     st.title("🤖 AI 활용능력평가 문제생성 에이전트 v2.0")
     st.caption("QLearn 문제 출제 에이젼트-내부용")
 
-# 디버그/알림은 '항상 존재하는' 사이드바에만 표시
-with st.sidebar:
-    if os.getenv("DEBUG") == "true":
-        st.markdown("### 🔍 디버그")
-        info = st.session_state.get("_debug_info", {})
-        st.write(
-            f"- EDGE_FUNCTION_URL: {'✅' if info.get('EDGE_FUNCTION_URL') else '❌'}\n"
-            f"- EDGE_SHARED_TOKEN: {'✅' if info.get('EDGE_SHARED_TOKEN') else '❌'}\n"
-            f"- SUPABASE_ANON_KEY: {'✅' if info.get('SUPABASE_ANON_KEY') else '❌'}\n"
-            f"- Streamlit Cloud: {'✅' if info.get('is_cloud') else '❌'}"
-        )
-        if st.session_state.get("_edge_init_ok") is False:
-            st.error("Edge Function 초기화 실패")
-        elif st.session_state.get("_edge_init_ok") is True:
-            st.success("Edge Function 초기화 완료")
+# 디버그 정보는 프로덕션에서 숨김
+# with st.sidebar:
+#     if os.getenv("DEBUG") == "true":
+#         st.markdown("### 🔍 디버그")
+#         info = st.session_state.get("_debug_info", {})
+#         st.write(
+#             f"- EDGE_FUNCTION_URL: {'✅' if info.get('EDGE_FUNCTION_URL') else '❌'}\n"
+#             f"- EDGE_SHARED_TOKEN: {'✅' if info.get('EDGE_SHARED_TOKEN') else '❌'}\n"
+#             f"- SUPABASE_ANON_KEY: {'✅' if info.get('SUPABASE_ANON_KEY') else '❌'}\n"
+#             f"- Streamlit Cloud: {'✅' if info.get('is_cloud') else '❌'}"
+#         )
+#         if st.session_state.get("_edge_init_ok") is False:
+#             st.error("Edge Function 초기화 실패")
+#         elif st.session_state.get("_edge_init_ok") is True:
+#             st.success("Edge Function 초기화 완료")
 
 # 이제 탭을 생성 (위쪽 레이아웃이 rerun에도 변하지 않음)
 TAB_NAMES = ["📋 Overview", "📝 문제 생성", "🤖 문제 자동생성", "📚 문제 은행", "💬 피드백 & HITL", "📊 분석 대시보드",

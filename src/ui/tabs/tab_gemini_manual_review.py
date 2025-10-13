@@ -28,9 +28,13 @@ def render(st):
     
     if GEMINI_AVAILABLE:
         try:
-            # 환경 변수에서 직접 확인
-            import os
-            api_key = os.getenv("GEMINI_API_KEY")
+            # Streamlit Cloud에서는 st.secrets 사용, 로컬에서는 환경변수 사용
+            api_key = None
+            try:
+                api_key = st.secrets.get("GEMINI_API_KEY")
+            except:
+                import os
+                api_key = os.getenv("GEMINI_API_KEY")
             
             if api_key:
                 gemini_client = GeminiClient()
