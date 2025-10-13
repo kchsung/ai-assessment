@@ -66,6 +66,19 @@ def render(st):
                     st.write("환경변수 GEMINI_API_KEY:", "설정됨" if os.getenv("GEMINI_API_KEY") else "설정되지 않음")
                 except Exception as e:
                     st.write("환경변수 확인 오류:", str(e))
+                
+                # API 키 값 직접 확인
+                try:
+                    api_key_direct = st.secrets["GEMINI_API_KEY"]
+                    st.write("st.secrets['GEMINI_API_KEY'] 직접 접근:", f"길이: {len(api_key_direct) if api_key_direct else 0}")
+                except Exception as e:
+                    st.write("st.secrets['GEMINI_API_KEY'] 직접 접근 오류:", str(e))
+                
+                try:
+                    api_key_get = st.secrets.get("GEMINI_API_KEY")
+                    st.write("st.secrets.get('GEMINI_API_KEY'):", f"길이: {len(api_key_get) if api_key_get else 0}")
+                except Exception as e:
+                    st.write("st.secrets.get('GEMINI_API_KEY') 오류:", str(e))
     
     # 1단계: qlearn_problems 테이블에서 문제 가져오기
     st.markdown("### 1단계: qlearn_problems 테이블에서 문제 가져오기")
