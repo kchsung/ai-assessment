@@ -285,6 +285,13 @@ def render(st):
                     
                     # 검토된 데이터가 있으면 함께 업데이트
                     if corrected_data:
+                        # qlearn_problems 테이블에 존재하지 않는 필드들 제거
+                        invalid_fields = ['role']  # questions 테이블에만 있는 필드들
+                        for field in invalid_fields:
+                            if field in corrected_data:
+                                print(f"⚠️ qlearn_problems 테이블에 존재하지 않는 필드 제거: {field}")
+                                del corrected_data[field]
+                        
                         update_data.update(corrected_data)
                         st.info(f"📝 검토된 데이터와 함께 업데이트: {list(corrected_data.keys())}")
                     else:
@@ -484,6 +491,13 @@ def batch_process_all_problems(st, problems, gemini_client):
                 
                 # 검토된 데이터가 있으면 함께 업데이트
                 if corrected_data:
+                    # qlearn_problems 테이블에 존재하지 않는 필드들 제거
+                    invalid_fields = ['role']  # questions 테이블에만 있는 필드들
+                    for field in invalid_fields:
+                        if field in corrected_data:
+                            print(f"⚠️ qlearn_problems 테이블에 존재하지 않는 필드 제거: {field}")
+                            del corrected_data[field]
+                    
                     update_data.update(corrected_data)
                 
                 # time_limit 필드가 누락되거나 null인 경우 난이도에 따른 기본값 설정

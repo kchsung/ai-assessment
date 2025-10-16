@@ -363,6 +363,15 @@ async function updateQlearnProblem(supabaseClient, params) {
     // JSON 필드들은 그대로 유지 (Supabase가 자동으로 JSONB로 처리)
     const updateData = { ...updates };
     
+    // qlearn_problems 테이블에 존재하지 않는 필드들 제거
+    const invalidFields = ['role']; // questions 테이블에만 있는 필드들
+    invalidFields.forEach(field => {
+      if (field in updateData) {
+        console.log(`⚠️ qlearn_problems 테이블에 존재하지 않는 필드 제거: ${field}`);
+        delete updateData[field];
+      }
+    });
+    
     // time_limit 필드가 null이거나 빈 값인 경우 난이도에 따른 기본값 설정
     if (!updateData.time_limit || updateData.time_limit === "" || updateData.time_limit === null) {
       // 현재 문제의 난이도를 조회하여 기본값 설정

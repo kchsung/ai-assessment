@@ -363,6 +363,14 @@ def render(st):
                     # 검토된 데이터가 있으면 함께 업데이트
                     if "gemini_manual_review_corrected_data" in st.session_state:
                         corrected_data = st.session_state.gemini_manual_review_corrected_data
+                        
+                        # qlearn_problems 테이블에 존재하지 않는 필드들 제거
+                        invalid_fields = ['role']  # questions 테이블에만 있는 필드들
+                        for field in invalid_fields:
+                            if field in corrected_data:
+                                print(f"⚠️ qlearn_problems 테이블에 존재하지 않는 필드 제거: {field}")
+                                del corrected_data[field]
+                        
                         update_data.update(corrected_data)
                         st.info(f"📝 검토된 데이터와 함께 업데이트: {list(corrected_data.keys())}")
                     else:
