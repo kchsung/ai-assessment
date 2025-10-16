@@ -303,8 +303,8 @@ def generate_next_question(st, selected_area, selected_difficulty, selected_type
                 area=area,
                 difficulty=difficulty,
                 question_type=question_type,
-                user_prompt_extra=additional_requirements or "",
-                system_prompt_extra=""
+                user_prompt_extra="",
+                system_prompt_extra=additional_requirements or ""
             )
         
         if result:
