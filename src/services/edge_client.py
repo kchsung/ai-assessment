@@ -164,3 +164,18 @@ class EdgeDBClient:
         """questions 테이블의 review_done 필드 업데이트"""
         self._call("update_question_review_done", {"question_id": question_id, "review_done": review_done})
         return True
+    
+    # 번역 관련 메서드들
+    def save_qlearn_problem_en(self, problem: dict) -> bool:
+        """qlearn_problems_en 테이블에 번역된 문제 저장"""
+        self._call("save_qlearn_problem_en", problem)
+        return True
+    
+    def get_qlearn_problems_en(self, filters: dict | None = None):
+        """qlearn_problems_en 테이블에서 번역된 문제 조회"""
+        return self._call("get_qlearn_problems_en", filters or {}) or []
+    
+    def update_qlearn_problem_is_en(self, problem_id: str, is_en: bool = True) -> bool:
+        """qlearn_problems 테이블의 is_en 필드 업데이트"""
+        self._call("update_qlearn_problem_is_en", {"problem_id": problem_id, "is_en": is_en})
+        return True

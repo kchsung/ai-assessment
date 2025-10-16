@@ -53,6 +53,13 @@ serve(async (req) => {
         return await updateQlearnProblem(supabaseClient, params);
       case 'update_question_review_done':
         return await updateQuestionReviewDone(supabaseClient, params);
+      // 번역 관련 액션들
+      case 'save_qlearn_problem_en':
+        return await saveQlearnProblemEn(supabaseClient, params);
+      case 'get_qlearn_problems_en':
+        return await getQlearnProblemsEn(supabaseClient, params);
+      case 'update_qlearn_problem_is_en':
+        return await updateQlearnProblemIsEn(supabaseClient, params);
       default:
         return new Response(JSON.stringify({
           ok: false,
@@ -223,11 +230,22 @@ async function getQlearnProblems(supabaseClient, filters = {}) {
     
     // 필터 적용
     if (filters.id) query = query.eq('id', filters.id);
-    if (filters.category) query = query.eq('category', filters.category);
+    if (filters.domain) query = query.eq('category', filters.domain);
     if (filters.difficulty) query = query.eq('difficulty', filters.difficulty);
     if (filters.topic) query = query.eq('topic', filters.topic);
     if (filters.active !== undefined) query = query.eq('active', filters.active);
     if (filters.lang) query = query.eq('lang', filters.lang);
+    if (filters.is_en !== undefined) {
+      if (filters.is_en === false) {
+        // false인 경우: is_en이 false이거나 null인 경우 모두 포함
+        query = query.or('is_en.is.null,is_en.eq.false');
+      } else if (filters.is_en === true) {
+        // true인 경우: is_en이 정확히 true인 경우만
+        query = query.eq('is_en', true);
+      } else {
+        query = query.eq('is_en', filters.is_en);
+      }
+    }
 
     const { data, error } = await query.order('created_at', {
       ascending: false
@@ -577,10 +595,10 @@ async function saveQuestion(supabaseClient, q) {
       ai_generated: q.ai_generated || false,
       template_id: q.template_id,
       metadata: JSON.stringify(metadata),
-      // 새로운 필드들
+      // questions 테이블에 실제 존재하는 컬럼들
       lang: metadata.lang || 'kr',
       category: metadata.category || 'interview',
-      topic: metadata.topic || null,
+      role: metadata.role || null,
       time_limit: metadata.time_limit || metadata.estimatedTime || null,
       topic_summary: metadata.topic_summary || null,
       scenario: metadata.scenario || null,
@@ -592,7 +610,6 @@ async function saveQuestion(supabaseClient, q) {
       guide: metadata.guide ? JSON.stringify(metadata.guide) : null,
       evaluation: metadata.evaluation ? JSON.stringify(metadata.evaluation) : null,
       steps: metadata.steps ? JSON.stringify(metadata.steps) : null,
-      // review_done 필드 추가
       review_done: q.review_done || false
     };
     const { data, error } = await supabaseClient.from('questions').insert(questionData).select();
@@ -633,7 +650,7 @@ async function getQuestions(supabaseClient, filters = {}) {
     if (filters.area) query = query.eq('area', filters.area);
     if (filters.difficulty) query = query.eq('difficulty', filters.difficulty);
     if (filters.type) query = query.eq('type', filters.type);
-    if (filters.topic) query = query.eq('topic', filters.topic);
+    if (filters.topic) query = query.eq('role', filters.topic); // questions 테이블에는 topic 대신 role 컬럼 사용
     if (filters.category) query = query.eq('category', filters.category);
     if (filters.review_done !== undefined) {
       // boolean 값을 명시적으로 처리
@@ -668,11 +685,11 @@ async function getQuestions(supabaseClient, filters = {}) {
       };
 
       const metadata = safeJsonParse(r.metadata, {});
-      // 새로운 필드들을 메타데이터에 병합
+      // questions 테이블의 실제 컬럼들을 메타데이터에 병합
       const newFields = {
         lang: r.lang || 'kr',
         category: r.category || 'interview',
-        topic: r.topic,
+        role: r.role,
         time_limit: r.time_limit,
         topic_summary: r.topic_summary,
         scenario: r.scenario,
