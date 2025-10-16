@@ -86,9 +86,10 @@ def render(st):
                 base_system_prompt = generator._build_system_prompt()
                 st.caption("📝 기본 프롬프트 사용")
             
-            # 사용자 추가 입력이 있으면 붙여서 표시
+            # 시스템 프롬프트 구성: 기본 프롬프트 + 사용자 프롬프트 (사용자 프롬프트가 있으면)
             if st.session_state.current_system_prompt:
-                full_system_prompt = base_system_prompt + "\n\n[사용자 추가 요구사항]\n" + st.session_state.current_system_prompt
+                full_system_prompt = base_system_prompt + "\n\n[사용자 추가 시스템 요구사항]\n" + st.session_state.current_system_prompt
+                st.caption("🎯 기본 프롬프트 + 사용자 시스템 프롬프트 적용")
             else:
                 full_system_prompt = base_system_prompt
             
@@ -115,13 +116,17 @@ def render(st):
             # User 프롬프트 표시
             st.markdown("### 👤 User 프롬프트")
             if db_user_prompt:
-                base_user_prompt = db_user_prompt
+                # 데이터베이스 user 프롬프트에 사용자 시스템 프롬프트를 context로 추가
+                if st.session_state.current_system_prompt:
+                    base_user_prompt = db_user_prompt + f"\n\n사용자 추가 요구사항: {st.session_state.current_system_prompt}"
+                else:
+                    base_user_prompt = db_user_prompt
             else:
                 base_user_prompt = generator._build_user_prompt(
                     st.session_state.current_area, 
                     st.session_state.current_difficulty, 
                     st.session_state.current_qtype, 
-                    ""
+                    st.session_state.current_system_prompt
                 )
             
             # 사용자 추가 입력이 있으면 붙여서 표시

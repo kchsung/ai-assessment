@@ -151,23 +151,34 @@ class AIQuestionGenerator:
         # 데이터베이스에서 프롬프트 조회 시도
         db_system_prompt, db_user_prompt = self._get_prompts_from_db(area, difficulty, question_type)
         
-        # 데이터베이스 프롬프트가 있으면 사용, 없으면 기본 프롬프트 사용
+        # 기본 시스템 프롬프트 구성
         if db_system_prompt and db_user_prompt:
             # 데이터베이스 시스템 프롬프트에 난이도 기준 추가
-            system_prompt = db_system_prompt + "\n\n" + self._build_system_prompt().split("난이도별 평가 기준:")[1]
-            user_prompt = db_user_prompt
+            base_system_prompt = db_system_prompt + "\n\n" + self._build_system_prompt().split("난이도별 평가 기준:")[1]
+            # 데이터베이스 user 프롬프트에 사용자 시스템 프롬프트를 context로 추가
+            if system_prompt_extra.strip():
+                base_user_prompt = db_user_prompt + f"\n\n사용자 추가 요구사항: {system_prompt_extra}"
+            else:
+                base_user_prompt = db_user_prompt
             st.info("📋 데이터베이스 프롬프트 사용 중")
         else:
-            # 기본 프롬프트 사용
-            system_prompt = self._build_system_prompt()
-            user_prompt = self._build_user_prompt(area, difficulty, question_type, "")
+            # 기본 프롬프트 사용 - 사용자 시스템 프롬프트를 context로 전달
+            base_system_prompt = self._build_system_prompt()
+            base_user_prompt = self._build_user_prompt(area, difficulty, question_type, system_prompt_extra)
             st.info("📝 기본 프롬프트 사용 중")
         
-        # 사용자가 입력한 추가 프롬프트들을 기존 프롬프트에 추가
-        if system_prompt_extra:
-            system_prompt = system_prompt + "\n\n[사용자 추가 요구사항]\n" + system_prompt_extra
-        if user_prompt_extra:
-            user_prompt = user_prompt + "\n\n[사용자 추가 요구사항]\n" + user_prompt_extra
+        # 시스템 프롬프트 구성: 기본 프롬프트 + 사용자 프롬프트 (사용자 프롬프트가 있으면)
+        if system_prompt_extra.strip():
+            system_prompt = base_system_prompt + "\n\n[사용자 추가 시스템 요구사항]\n" + system_prompt_extra
+            st.info("🎯 기본 프롬프트 + 사용자 시스템 프롬프트 적용 중")
+        else:
+            system_prompt = base_system_prompt
+        
+        # User 프롬프트 구성: 기본 프롬프트 + 사용자 프롬프트 (사용자 프롬프트가 있으면)
+        if user_prompt_extra.strip():
+            user_prompt = base_user_prompt + "\n\n[사용자 추가 요구사항]\n" + user_prompt_extra
+        else:
+            user_prompt = base_user_prompt
             
         try:
             # 세션 상태에서 선택된 모델 가져오기 (기본값: gpt-5)
