@@ -141,12 +141,11 @@ class GeminiClient:
     def review_content(self, system_prompt: str, user_prompt: str) -> str:
         """내용 검토를 위한 제미나이 API 호출"""
         try:
-            # 제미나이에서는 system instruction을 지원하므로 이를 활용
-            # system_prompt를 system instruction으로, user_prompt를 user message로 분리
-            response = self.model.generate_content(
-                user_prompt,
-                system_instruction=system_prompt
-            )
+            # 최신 Google Generative AI 라이브러리에서는 contents 배열을 사용
+            contents = [
+                {"role": "user", "parts": [{"text": f"{system_prompt}\n\n{user_prompt}"}]}
+            ]
+            response = self.model.generate_content(contents)
             
             # 응답 디버깅 정보 출력 (문제 데이터 출력 방지를 위해 주석 처리)
             # print(f"DEBUG: 제미나이 응답 타입: {type(response)}")
