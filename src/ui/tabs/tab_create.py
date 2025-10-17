@@ -33,11 +33,25 @@ def render(st):
                     st.error("데이터베이스 연결이 초기화되지 않았습니다. Edge Function 설정을 확인하세요.")
                     return
                 q = st.session_state.generator.generate_with_ai(area, difficulty, qtype, user_prompt, system_prompt)
-                if q and st.session_state.db.save_question(q):
-                    st.success("문제가 저장되었습니다!")
-                    st.session_state.last_generated = q
-                elif q:
-                    st.error("문제 저장 실패")
+                if q:
+                    # 문제 타입에 따라 적절한 테이블에 저장
+                    question_type = q.get("type", "subjective")
+                    try:
+                        if question_type == "multiple_choice":
+                            if st.session_state.db.save_multiple_choice_question(q):
+                                st.success("✅ 객관식 문제가 questions_multiple_choice 테이블에 저장되었습니다!")
+                            else:
+                                st.error("❌ 객관식 문제 저장 실패")
+                        else:
+                            if st.session_state.db.save_subjective_question(q):
+                                st.success("✅ 주관식 문제가 questions_subjective 테이블에 저장되었습니다!")
+                            else:
+                                st.error("❌ 주관식 문제 저장 실패")
+                        st.session_state.last_generated = q
+                    except Exception as e:
+                        st.error(f"❌ 문제 저장 실패: {str(e)}")
+                else:
+                    st.error("❌ 문제 생성 실패")
         
         # 프롬프트 보기 버튼
         if st.button("📋 프롬프트 보기", use_container_width=True):
@@ -143,7 +157,7 @@ def render(st):
             q = st.session_state.get("last_generated")
             
             if q:
-                st.info(f"**문제 ID**: {q['id']}  \n**평가 영역**: {q['area']}  \n**난이도**: {q['difficulty']}  \n**유형**: {q['type']}")
+                st.info(f"**문제 ID**: {q.get('id', 'N/A')}  \n**평가 영역**: {q.get('category', 'N/A')}  \n**난이도**: {q['difficulty']}  \n**유형**: {q['type']}")
                 
                 meta = q.get("metadata", {})
                 

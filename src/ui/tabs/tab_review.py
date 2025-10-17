@@ -6,7 +6,40 @@ import json
 import uuid
 import re
 from datetime import datetime
+from functools import lru_cache
 from src.constants import ASSESSMENT_AREAS, QUESTION_TYPES, VALID_DIFFICULTIES, DEFAULT_DIFFICULTY, DEFAULT_DOMAIN
+
+# 캐시 설정
+@st.cache_data(ttl=300)  # 5분 캐시
+def get_cached_review_questions(filters_hash):
+    """캐시된 검토 문제 목록 조회 - 새로운 테이블들에서 통합 조회"""
+    try:
+        # 객관식과 주관식 문제를 모두 조회하여 통합
+        multiple_choice_questions = st.session_state.db.get_multiple_choice_questions({})
+        subjective_questions = st.session_state.db.get_subjective_questions({})
+        
+        # 두 리스트를 통합하고 호환성을 위해 기존 형식으로 변환
+        all_questions = []
+        
+        # 객관식 문제 추가
+        for q in multiple_choice_questions:
+            q['type'] = 'multiple_choice'  # 타입 명시
+            all_questions.append(q)
+        
+        # 주관식 문제 추가
+        for q in subjective_questions:
+            q['type'] = 'subjective'  # 타입 명시
+            all_questions.append(q)
+        
+        return all_questions
+    except Exception as e:
+        st.error(f"문제 조회 실패: {e}")
+        # 기존 방식으로 폴백
+        return st.session_state.db.get_questions({})
+
+def get_filters_hash(filters):
+    """필터를 해시로 변환하여 캐시 키 생성"""
+    return hash(str(sorted(filters.items())))
 
 def render(st):
     st.header("🔍 문제 검토(JSON)")
@@ -17,8 +50,6 @@ def render(st):
         st.error("데이터베이스 연결이 초기화되지 않았습니다.")
         return
     
-    # 제미나이 검토 기능은 별도 탭으로 이동됨
-    st.info("💡 제미나이 검토 기능은 '제미나이 수동 검토' 탭으로 이동되었습니다.")
     
     # 1단계: 문제 가져오기 및 필터링
     st.markdown("### 1단계: 문제 가져오기 및 필터링")
@@ -51,7 +82,7 @@ def render(st):
             index=0
         )
     
-    # 필터 적용하여 문제 가져오기
+    # 필터 적용하여 문제 가져오기 (캐시 활용)
     if st.button("🔍 문제 조회", type="primary", key="tab_review_search_v2"):
         filters = {}
         if area_filter != "전체":
@@ -62,9 +93,28 @@ def render(st):
         
         # 검토 완료되지 않은 문제만 가져오기 (review_done이 FALSE인 문제들)
         filters["review_done"] = False  # FALSE 값으로 필터링
+        
+        # 캐시된 데이터 사용
+        with st.spinner("검토 대기 문제를 조회하는 중..."):
+            all_questions = get_cached_review_questions(get_filters_hash(filters))
             
-        # print(f"DEBUG: 필터링 조건 - category: {filters.get('category')}, type: {filters.get('type')}, review_done: {filters.get('review_done')}")
-        questions = st.session_state.db.get_questions(filters)
+            # 클라이언트 측에서 필터링 (성능 개선)
+            questions = []
+            for q in all_questions:
+                # review_done 필터링
+                if q.get("review_done", False):
+                    continue
+                
+                # category 필터링
+                if filters.get("category") and q.get("category") != filters["category"]:
+                    continue
+                
+                # type 필터링
+                if filters.get("type") and q.get("type") != filters["type"]:
+                    continue
+                
+                questions.append(q)
+        
         st.session_state.review_questions = questions
         st.success(f"총 {len(questions)}개의 검토 대기 문제를 찾았습니다.")
         
@@ -111,8 +161,8 @@ def render(st):
         
         selected_question = st.session_state.selected_review_question
         
-        # 매핑된 데이터 미리보기
-        mapped_data = map_question_to_qlearn_format(selected_question)
+        # 매핑된 데이터 미리보기 (최적화된 함수 사용)
+        mapped_data = map_question_to_qlearn_format_sync(selected_question)
         
         col1, col2 = st.columns(2)
         
@@ -149,8 +199,8 @@ def render(st):
                         st.error("선택된 문제 정보가 없습니다.")
                         return
                     
-                    # 매핑된 데이터를 다시 생성 (캐시 문제 방지)
-                    fresh_mapped_data = map_question_to_qlearn_format(selected_question)
+                    # 매핑된 데이터를 다시 생성 (최적화된 함수 사용)
+                    fresh_mapped_data = map_question_to_qlearn_format_sync(selected_question)
                     fresh_mapped_data["active"] = False
                     
                     original_question_id = selected_question.get("id")
@@ -217,42 +267,30 @@ def render(st):
                     del st.session_state.mapped_review_data
                 st.rerun()
 
+@lru_cache(maxsize=128)
 def extract_json_from_text(text: str) -> dict:
     """
-    텍스트에서 JSON 부분을 추출합니다.
+    텍스트에서 JSON 부분을 추출합니다. (캐시 적용으로 성능 개선)
     """
     if not text:
         return {}
     
-    # 1. 먼저 전체 텍스트가 JSON인지 확인
+    # 1. 먼저 전체 텍스트가 JSON인지 확인 (가장 빠른 경우)
     try:
         return json.loads(text.strip())
     except json.JSONDecodeError:
         pass
     
-    # 2. 코드 블록(```json ... ```) 내부의 JSON 추출
-    # 더 정확한 코드 블록 패턴 (```json으로 시작하고 ```로 끝나는 부분)
+    # 2. 코드 블록 패턴 (가장 일반적인 경우)
     code_block_pattern = r'```(?:json)?\s*\n?(\{.*?\})\s*\n?```'
     code_matches = re.findall(code_block_pattern, text, re.DOTALL)
     for match in code_matches:
         try:
-            # 공백과 줄바꿈 정리
-            cleaned_match = match.strip()
-            return json.loads(cleaned_match)
+            return json.loads(match.strip())
         except json.JSONDecodeError:
             continue
     
-    # 2-1. 더 간단한 코드 블록 패턴도 시도
-    simple_code_pattern = r'```json\s*(\{.*?\})\s*```'
-    simple_matches = re.findall(simple_code_pattern, text, re.DOTALL)
-    for match in simple_matches:
-        try:
-            cleaned_match = match.strip()
-            return json.loads(cleaned_match)
-        except json.JSONDecodeError:
-            continue
-    
-    # 3. 첫 번째 중괄호부터 마지막 중괄호까지 추출
+    # 3. 첫 번째 중괄호부터 마지막 중괄호까지 추출 (빠른 추출)
     first_brace = text.find('{')
     last_brace = text.rfind('}')
     
@@ -263,23 +301,7 @@ def extract_json_from_text(text: str) -> dict:
         except json.JSONDecodeError:
             pass
     
-    # 4. 여러 JSON 객체가 있는 경우 가장 긴 것 선택
-    json_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
-    matches = re.findall(json_pattern, text, re.DOTALL)
-    
-    # 가장 긴 JSON 후보를 선택
-    longest_match = ""
-    for match in matches:
-        if len(match) > len(longest_match):
-            longest_match = match
-    
-    if longest_match:
-        try:
-            return json.loads(longest_match)
-        except json.JSONDecodeError:
-            pass
-    
-    # 5. 중괄호 개수를 맞춰서 JSON 추출 시도
+    # 4. 중괄호 개수를 맞춰서 JSON 추출 (정확한 추출)
     brace_count = 0
     start_idx = -1
     
@@ -296,32 +318,6 @@ def extract_json_from_text(text: str) -> dict:
                     return json.loads(json_candidate)
                 except json.JSONDecodeError:
                     continue
-    
-    # 6. 플레이스홀더가 있는 JSON 처리 (예: {time_limit})
-    if '{' in text and '}' in text:
-        # 플레이스홀더를 기본값으로 대체하여 JSON 파싱 시도
-        placeholder_replacements = {
-            '{time_limit}': '"5분"',
-            '{difficulty}': f'"{DEFAULT_DIFFICULTY}"',
-            '{category}': f'"{DEFAULT_DOMAIN}"',
-            '{lang}': '"kr"'
-        }
-        
-        # 첫 번째 중괄호부터 마지막 중괄호까지 추출
-        first_brace = text.find('{')
-        last_brace = text.rfind('}')
-        
-        if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
-            json_candidate = text[first_brace:last_brace + 1]
-            
-            # 플레이스홀더 대체
-            for placeholder, replacement in placeholder_replacements.items():
-                json_candidate = json_candidate.replace(placeholder, replacement)
-            
-            try:
-                return json.loads(json_candidate)
-            except json.JSONDecodeError:
-                pass
     
     return {}
 
@@ -351,8 +347,38 @@ def ensure_array_format(data) -> list:
     # 기타 타입인 경우 그대로 단일 요소 배열로 반환
     return [data] if str(data).strip() else []
 
-def map_question_to_qlearn_format(question: dict) -> dict:
-    """questions 테이블 데이터를 qlearn_problems 형식으로 매핑"""
+# 전역 변수로 매핑 테이블 캐시 (성능 개선)
+_DIFFICULTY_MAPPING = {
+    "very_easy": "very easy",
+    "easy": "easy",
+    "medium": "normal",
+    "normal": "normal",
+    "hard": "hard",
+    "very_hard": "very hard",
+    "보통": "normal",
+    "쉬움": "easy",
+    "어려움": "hard",
+    "아주 쉬움": "very easy",
+    "아주 어려움": "very hard",
+    "매우 어려움": "very hard",
+    "": "normal",
+    None: "normal"
+}
+
+_TIME_LIMIT_DEFAULTS = {
+    "very easy": "3분 이내",
+    "easy": "4분 이내", 
+    "normal": "5분 이내",
+    "hard": "7분 이내",
+    "very hard": "10분 이내"
+}
+
+@lru_cache(maxsize=64)
+def map_question_to_qlearn_format(question_id: str, question_data: str) -> dict:
+    """questions 테이블 데이터를 qlearn_problems 형식으로 매핑 (캐시 적용)"""
+    
+    # 문자열로 받은 데이터를 다시 딕셔너리로 변환
+    question = json.loads(question_data)
     
     # UUID 생성
     problem_id = str(uuid.uuid4())
@@ -363,52 +389,27 @@ def map_question_to_qlearn_format(question: dict) -> dict:
     # 메타데이터 추출
     metadata = question.get("metadata", {})
     
-    # difficulty 값 변환 (Supabase q_difficulty enum에 맞게) - 허용된 값만 사용
-    difficulty_mapping = {
-        "very_easy": "very easy",
-        "easy": "easy",
-        "medium": "normal",  # medium을 normal로 변환
-        "normal": "normal",
-        "hard": "hard",
-        "very_hard": "very hard",
-        "보통": "normal",  # 한국어 "보통"을 "normal"로 변환
-        "쉬움": "easy",
-        "어려움": "hard",
-        "아주 쉬움": "very easy",
-        "아주 어려움": "very hard",
-        "매우 어려움": "very hard",
-        "": "normal",  # 기본값
-        None: "normal"
-    }
-    
-    # Supabase q_difficulty enum 값만 허용
+    # difficulty 값 변환 (캐시된 매핑 테이블 사용)
     original_difficulty = question.get("difficulty", "")
-    valid_difficulty = difficulty_mapping.get(original_difficulty, DEFAULT_DIFFICULTY)
+    valid_difficulty = _DIFFICULTY_MAPPING.get(original_difficulty, DEFAULT_DIFFICULTY)
     
     # 최종 검증: 허용된 enum 값이 아니면 기본값으로 설정
     if valid_difficulty not in VALID_DIFFICULTIES:
         valid_difficulty = DEFAULT_DIFFICULTY
     
-    # 난이도별 time_limit 기본값 설정
-    time_limit_defaults = {
-        "very easy": "3분 이내",
-        "easy": "4분 이내", 
-        "normal": "5분 이내",
-        "hard": "7분 이내",
-        "very hard": "10분 이내"
-    }
+    # 난이도별 time_limit 기본값 설정 (캐시된 테이블 사용)
     time_limit = metadata.get("time_limit", "")
     if not time_limit or time_limit == "":
-        time_limit = time_limit_defaults.get(valid_difficulty, "5분 이내")
+        time_limit = _TIME_LIMIT_DEFAULTS.get(valid_difficulty, "5분 이내")
     
     # 매핑된 데이터 구성
     mapped_data = {
         "id": problem_id,
-        "area": question.get("area", ""),  # area 필드 추가
+        "area": question.get("area", ""),
         "lang": metadata.get("lang", "kr"),
         "category": metadata.get("category", question.get("category", "")),
         "topic": metadata.get("topic", ""),
-        "difficulty": valid_difficulty,  # 변환된 difficulty 사용
+        "difficulty": valid_difficulty,
         "time_limit": time_limit,
         "topic_summary": metadata.get("topic", ""),
         "title": question.get("question", metadata.get("topic", "")),
@@ -420,11 +421,14 @@ def map_question_to_qlearn_format(question: dict) -> dict:
         "guide": metadata.get("guide", {}),
         "evaluation": ensure_array_format(metadata.get("evaluation", [])),
         "task": metadata.get("task", ""),
-        # created_by 필드는 제외 (UUID 오류 방지)
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
         "reference": metadata.get("reference", {}),
-        "active": False  # 기본값
+        "active": False
     }
     
     return mapped_data
+
+def map_question_to_qlearn_format_sync(question: dict) -> dict:
+    """동기 버전의 매핑 함수 (기존 호환성 유지)"""
+    return map_question_to_qlearn_format(question.get("id", ""), json.dumps(question))

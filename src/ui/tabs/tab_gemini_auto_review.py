@@ -32,42 +32,30 @@ def render(st):
         try:
             # Streamlit Cloud에서는 st.secrets 사용, 로컬에서는 환경변수 사용
             api_key = None
-            print("🔍 [DEBUG] 제미나이 API 키 감지 시작 (자동검토)")
             
             # 1순위: st.secrets 직접 접근
             try:
                 api_key = st.secrets["GEMINI_API_KEY"]
-                print(f"🔍 [DEBUG] st.secrets 직접 접근 성공: 길이={len(api_key) if api_key else 0}")
-            except Exception as e:
-                print(f"🔍 [DEBUG] st.secrets 직접 접근 실패: {e}")
+            except Exception:
                 pass
             
             # 2순위: st.secrets.get() 방식
             if not api_key:
                 try:
                     api_key = st.secrets.get("GEMINI_API_KEY")
-                    print(f"🔍 [DEBUG] st.secrets.get() 성공: 길이={len(api_key) if api_key else 0}")
-                except Exception as e:
-                    print(f"🔍 [DEBUG] st.secrets.get() 실패: {e}")
+                except Exception:
                     pass
             
             # 3순위: 환경변수 fallback
             if not api_key:
                 import os
                 api_key = os.getenv("GEMINI_API_KEY")
-                print(f"🔍 [DEBUG] 환경변수 접근: 길이={len(api_key) if api_key else 0}")
             
             # API 키가 존재하고 빈 문자열이 아닌지 확인
-            print(f"🔍 [DEBUG] 최종 API 키 상태: {api_key is not None}, 길이={len(api_key) if api_key else 0}")
             if api_key and len(api_key.strip()) > 0:
-                print("🔍 [DEBUG] API 키 유효성 검증 통과")
                 gemini_client = GeminiClient()
                 gemini_available = True
-                print("🔍 [DEBUG] GeminiClient 초기화 성공")
-            else:
-                print("🔍 [DEBUG] API 키 유효성 검증 실패")
-        except Exception as e:
-            print(f"🔍 [DEBUG] 전체 예외 발생: {e}")
+        except Exception:
             gemini_available = False
     
     if not gemini_available:
@@ -244,7 +232,6 @@ def render(st):
                     prompt_source = "기본 프롬프트"
                     try:
                         # Supabase에서 프롬프트 조회 (QLearn 검토용 프롬프트 ID 사용)
-                        print(f"🔍 QLearn 검토용 프롬프트 ID 조회: 9e55115e-0198-401d-8633-075bc8a25201")
                         db_prompt = st.session_state.db.get_prompt_by_id("9e55115e-0198-401d-8633-075bc8a25201")
                         if db_prompt:
                             system_prompt = db_prompt
@@ -338,7 +325,7 @@ def render(st):
                     else:
                         # 다음 문제로 자동 진행을 위해 rerun 호출 (자동 검토 진행 중에만)
                         import time
-                        time.sleep(1)  # 1초 대기 후 다음 문제 진행
+                        # time.sleep(1) 제거 - 성능 개선
                         st.rerun()  # 자동 검토 진행
                     
                 except Exception as e:

@@ -1,0 +1,208 @@
+[
+  {
+    "step": 1,
+    "title": "맥락·목표·제약 정리",
+    "answer": "C",
+    "options": [
+      {
+        "id": "A",
+        "text": "지난 10개 숏츠의 평균 조회수와 좋아요 수만 요약해줘.",
+        "weight": 0.6,
+        "feedback": "정답이 아닙니다. 조회수/좋아요 요약은 필요하지만, 목표 지표(CTR·WTR·구독전환) 정렬, 제약(예산·시간·장비), 경쟁 채널 고려가 빠졌습니다. 목표·제약·데이터 소스를 함께 요약하도록 지시해야 다음 단계의 의사결정 기준이 선명해집니다.",
+        "ref_paths": [
+          "ref.analytics.summary"
+        ]
+      },
+      {
+        "id": "B",
+        "text": "목표 지표를 WTR15s·구독 전환·공유 비율로 정의하고 촬영 제약(예산 6만원·3시간·스마트폰)을 반영해 성공 기준과 체크리스트를 표로 정리해줘.",
+        "weight": 0.85,
+        "feedback": "아주 근접하지만 정답은 아닙니다. 목표와 제약을 구조화하는 점은 좋습니다. 다만 보유 데이터(analytics.csv, top_comments.json)와 경쟁 채널 URL을 함께 명시해 초기 인사이트 가설까지 뽑아내도록 해야 이후 분석 연계가 쉬워집니다.",
+        "ref_paths": [
+          "ref.metrics.objectives",
+          "ref.constraints.checklist"
+        ]
+      },
+      {
+        "id": "C",
+        "text": "시리즈 목적과 우선순위 지표(WTR15s·CTR·구독전환)를 정리하고, 보유 데이터(analytics.csv, top_comments.json)와 경쟁 채널 3개 URL을 전제로 핵심 인사이트 가설 3개, 성공 기준(OKR), 리스크(촬영 제한·소음·허가), 의사결정 기준을 한 페이지 요약으로 만들어줘.",
+        "weight": 1,
+        "feedback": "정답입니다. 목표 지표·데이터 소스·경쟁 맥락·리스크까지 통합 요약해 이후 단계의 분석/제작/검증이 한 흐름으로 이어지도록 잘 지시했습니다. 인사이트 가설을 미리 정의하게 해 테스트 설계로 자연스럽게 연결되는 점이 특히 좋습니다.",
+        "ref_paths": [
+          "ref.metrics.okr",
+          "ref.risk.shooting",
+          "ref.competitor.urls"
+        ]
+      },
+      {
+        "id": "D",
+        "text": "부산 여행 트렌드를 검색해 인기 해시태그 20개만 나열해줘.",
+        "weight": 0.5,
+        "feedback": "정답이 아닙니다. 해시태그 목록은 참고 수준이지만, 현재 목표·데이터·제약을 기반으로 한 실행 기준을 만들지 못합니다. 초기에는 성과 지표와 가설·리스크를 구조화하는 지시가 필요합니다.",
+        "ref_paths": [
+          "ref.social.trend.hashtags"
+        ]
+      }
+    ],
+    "question": "아래 중 초기 맥락을 빠르게 정리하고 목표·제약을 명확히 해 이후 분석·제작의 기준을 세우기 위한 가장 적절한 AI 지시문은 무엇인가요?",
+    "ref_paths": [
+      "ref.metrics.wtr15",
+      "ref.metrics.ctr",
+      "ref.metrics.sub_conv",
+      "ref.constraints.shoot"
+    ]
+  },
+  {
+    "step": 2,
+    "title": "데이터·경쟁 분석으로 가설 정교화",
+    "answer": "A",
+    "options": [
+      {
+        "id": "A",
+        "text": "analytics.csv의 초당 유지율 곡선과 top_comments.json 토픽을 결합해 이탈 지점과 공명 토픽을 클러스터링하고, 경쟁 3채널 최근 20개 숏츠의 훅 패턴을 비교해 전환지표 상관요인을 추정, 테스트 가설 3개와 검증지표를 표로 정리해줘.",
+        "weight": 1,
+        "feedback": "정답입니다. 유지율 곡선+댓글 토픽+경쟁 훅 비교를 결합해 행동 데이터와 정성 신호를 동시에 반영하고, 검증 가능한 가설과 지표까지 구조화하도록 지시한 점이 탁월합니다.",
+        "ref_paths": [
+          "ref.analytics.curve_join",
+          "ref.comments.clustering",
+          "ref.hypothesis.matrix"
+        ]
+      },
+      {
+        "id": "B",
+        "text": "댓글에서 긍정 단어만 뽑아서 워드클라우드를 만들어줘.",
+        "weight": 0.55,
+        "feedback": "정답이 아닙니다. 시각화 자체는 가능하지만 유지율·전환과의 연결이 없고, 실행 가능한 테스트 가설을 만들기 어렵습니다. 이탈 지점과 훅 패턴 비교까지 포함하도록 지시를 확장하세요.",
+        "ref_paths": [
+          "ref.comments.wordcloud"
+        ]
+      },
+      {
+        "id": "C",
+        "text": "경쟁 채널 영상의 썸네일 색상 분포만 분석해줘.",
+        "weight": 0.5,
+        "feedback": "정답이 아닙니다. 썸네일 색상은 일부 영향 요소일 수 있지만, 숏츠 훅·유지율과 직접 연결되기 어렵습니다. 유지율 곡선과 댓글 토픽, 훅 구조 비교를 함께 요청해야 합니다.",
+        "ref_paths": [
+          "ref.competitor.thumbnail.colors"
+        ]
+      },
+      {
+        "id": "D",
+        "text": "지난 10개 영상의 평균 시청시간과 조회수를 상관분석하고 이탈 구간 타임스탬프를 표시하며 개선 가설 1개를 제안해줘.",
+        "weight": 0.8,
+        "feedback": "부분적으로 유용하나 최적은 아닙니다. 우리 데이터 내 상관과 이탈 구간은 잡지만, 댓글 토픽과 경쟁 훅 비교가 빠져 가설의 일반화와 실행력이 약합니다. 외부 벤치마크와 정성 결합을 추가하세요.",
+        "ref_paths": [
+          "ref.analytics.correlation",
+          "ref.analytics.drop_timestamps"
+        ]
+      }
+    ],
+    "question": "보유 데이터와 경쟁 채널을 활용해 이탈 구간과 훅 패턴을 찾고, 테스트 가능한 가설을 뽑아내기 위한 가장 효과적인 AI 지시문은 무엇인가요?",
+    "ref_paths": [
+      "ref.analytics.retention_curve",
+      "ref.comments.topics",
+      "ref.competitor.recent_shorts"
+    ]
+  },
+  {
+    "step": 3,
+    "title": "훅·스크립트·샷리스트 제작",
+    "answer": "D",
+    "options": [
+      {
+        "id": "A",
+        "text": "전체 3분짜리 내레이션 스크립트를 써줘. 부산 야시장 소개를 자세히 넣어줘.",
+        "weight": 0.55,
+        "feedback": "정답이 아닙니다. 숏츠(15초 내) 포맷과 훅 검증 목적에 맞지 않습니다. 비트 단위 타임라인, 온스크린 요소, CTA 등 실행 가능한 샷리스트 형태가 필요합니다.",
+        "ref_paths": [
+          "ref.creative.longform_script"
+        ]
+      },
+      {
+        "id": "B",
+        "text": "트랜지션 프리셋 10개와 자막 폰트 5개만 추천해줘.",
+        "weight": 0.65,
+        "feedback": "정답이 아닙니다. 도구 추천은 보조적일 뿐, 가설을 검증할 훅 변형과 타임라인·텍스트·오디오 계획이 없습니다. 비트별 구성과 CTA까지 포함하도록 지시하세요.",
+        "ref_paths": [
+          "ref.assets.transitions",
+          "ref.assets.fonts"
+        ]
+      },
+      {
+        "id": "C",
+        "text": "가격표 오버레이 템플릿 PNG를 만들어줄 수 있다면 제공하고, 없다면 대체 색상값만 알려줘.",
+        "weight": 0.6,
+        "feedback": "정답이 아닙니다. 온스크린 가격은 중요하지만, 훅 구조·자막·오디오·CTA가 빠져 전체 경험을 설계하지 못합니다. 테스트용 훅 2종을 비트별로 제작하도록 요청하세요.",
+        "ref_paths": [
+          "ref.assets.price_overlay"
+        ]
+      },
+      {
+        "id": "D",
+        "text": "테스트 가설을 반영해 15초 숏츠용 훅 2종('가격·맵핀'형/'소리 ASMR'형)을 각 0.0–3.0–7.5–13.0초 비트별로 대사·B-roll·자막·효과음·온스크린 가격표·맵핀 스티커를 포함한 샷리스트로 작성하고, 마지막 2초 구독 유도 CTA와 자막 가독성 체크리스트를 포함해줘.",
+        "weight": 1,
+        "feedback": "정답입니다. 두 가지 훅 변형을 동일한 길이·비트로 설계해 A/B 검증이 가능하며, 대사·자막·오디오·온스크린 요소와 CTA까지 포함되어 실전 적용성이 높습니다.",
+        "ref_paths": [
+          "ref.creative.beat_timeline",
+          "ref.creative.cta_checklist"
+        ]
+      }
+    ],
+    "question": "가설을 검증할 수 있도록 숏츠용 훅과 구체적 샷리스트를 생성해 실제 촬영·편집에 바로 쓰기 위한 가장 적절한 AI 지시문은 무엇인가요?",
+    "ref_paths": [
+      "ref.creative.hook_library",
+      "ref.assets.overlay_templates"
+    ]
+  },
+  {
+    "step": 4,
+    "title": "출시·리스크·측정 설계",
+    "answer": "B",
+    "options": [
+      {
+        "id": "A",
+        "text": "완성본을 인스타 릴스에도 맞춰 리사이즈하고 업로드 예약만 해줘.",
+        "weight": 0.6,
+        "feedback": "정답이 아닙니다. 배포 확장은 좋지만, 촬영·표현 리스크 점검과 훅별 성과 측정 설계가 없습니다. 체크리스트와 A/B 측정 계획을 포함해야 합니다.",
+        "ref_paths": [
+          "ref.publishing.crosspost"
+        ]
+      },
+      {
+        "id": "B",
+        "text": "부산 야시장 촬영 시 유의할 법·문화 이슈(상인 허가, 개인정보/영유아 촬영, 위생 표현, 음악 라이선스)를 체크리스트로 검토하고, 2개 훅의 업로드 순서·게시 시간·해시태그·설명문 A/B 버전을 제안, YouTube Analytics에서 훅별 성과를 분리 측정할 태그/실험 설계를 표로 만들어줘.",
+        "weight": 1,
+        "feedback": "정답입니다. 현장 리스크를 사전 점검하고, 배포 변수와 A/B 버전을 설계하며, 훅별로 측정 가능한 태깅·실험 계획까지 포함해 실행과 학습을 동시에 담보합니다.",
+        "ref_paths": [
+          "ref.policy.checklist",
+          "ref.analytics.ab_tagging",
+          "ref.publishing.best_time"
+        ]
+      },
+      {
+        "id": "C",
+        "text": "좋아요 1000개를 목표로 한 문장 다짐문을 써줘.",
+        "weight": 0.4,
+        "feedback": "정답이 아닙니다. 동기 부여 문구는 측정·리스크 관리·배포 최적화와 무관합니다. 체크리스트와 실험 설계로 전환하세요.",
+        "ref_paths": [
+          "ref.motivation.note"
+        ]
+      },
+      {
+        "id": "D",
+        "text": "게시 후 24시간 조회수만 보고 다음 영상을 만들지 여부를 결정하는 기준을 정해줘.",
+        "weight": 0.65,
+        "feedback": "정답이 아닙니다. 단일 지표·단일 시점 의사결정은 왜곡 위험이 큽니다. 훅별 태깅·WTR/CTR/구독전환 등 복수 지표의 추세로 판단하도록 설계해야 합니다.",
+        "ref_paths": [
+          "ref.metrics.single_kpi_rule"
+        ]
+      }
+    ],
+    "question": "촬영/표현 리스크를 줄이고 게시 후 훅별 성과를 분리 측정할 수 있도록 계획을 세우기 위한 최적의 AI 지시문은 무엇인가요?",
+    "ref_paths": [
+      "ref.policy.shooting_local",
+      "ref.publishing.schedule",
+      "ref.metrics.experiment_plan"
+    ]
+  }
+]

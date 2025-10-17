@@ -26,9 +26,7 @@ def get_secret(name: str, default=None) -> str | None:
                 val = getattr(st.secrets.default, name)
                 if val and val != "your_openai_api_key_here" and val.strip() != "":
                     return val
-    except Exception as e:
-        # 디버깅용
-        print(f"st.secrets 접근 오류 ({name}): {e}")
+    except Exception:
         pass
     
     # 2) 환경변수 (로컬 .env 또는 시스템 환경변수)

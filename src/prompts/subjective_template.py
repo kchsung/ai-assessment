@@ -34,7 +34,7 @@ def get_subjective_prompt(area_display: str, difficulty_display: str, guide: str
     "metrics": {{"paid_conv_rate": "유료 전환율 2.3%", "retention_d7": "7일 리텐션 45%"}},
     "funnel": {{"signup": "회원가입 단계별 데이터"}},
     "user_feedback": [{{"tag": "사용자 피드백 태그", "content": "피드백 내용"}}],
-    "competitor_strategy": {{"campaign": {{"A": "경쟁사 A 전략", "B": "경쟁사 B 전략"}}}}
+    "competitor_strategy": [{{"campaign": {{"A": "경쟁사 A 전략", "B": "경쟁사 B 전략"}}}}]
   }},
   "first_question": ["첫 번째 질문", "두 번째 질문"],
   "requirements": ["요구사항 1", "요구사항 2"],

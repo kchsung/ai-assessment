@@ -160,17 +160,14 @@ class AIQuestionGenerator:
                 base_user_prompt = db_user_prompt + f"\n\n사용자 추가 요구사항: {system_prompt_extra}"
             else:
                 base_user_prompt = db_user_prompt
-            st.info("📋 데이터베이스 프롬프트 사용 중")
         else:
             # 기본 프롬프트 사용 - 사용자 시스템 프롬프트를 context로 전달
             base_system_prompt = self._build_system_prompt()
             base_user_prompt = self._build_user_prompt(area, difficulty, question_type, system_prompt_extra)
-            st.info("📝 기본 프롬프트 사용 중")
         
         # 시스템 프롬프트 구성: 기본 프롬프트 + 사용자 프롬프트 (사용자 프롬프트가 있으면)
         if system_prompt_extra.strip():
             system_prompt = base_system_prompt + "\n\n[사용자 추가 시스템 요구사항]\n" + system_prompt_extra
-            st.info("🎯 기본 프롬프트 + 사용자 시스템 프롬프트 적용 중")
         else:
             system_prompt = base_system_prompt
         
@@ -190,70 +187,185 @@ class AIQuestionGenerator:
                           {"role":"user","content":user_prompt}]
             )
             content = resp.choices[0].message.content
-            # Streamlit 상태값 제거 (key로 시작하는 패턴 제거)
-            if content:
-                content = re.sub(r'key\w+\s*', '', content)
             
-            m = re.search(r"\{[\s\S]*\}", content or "")
-            if m:
-                # JSON에서 trailing comma 제거
-                json_str = m.group()
-                # 배열과 객체의 trailing comma 제거
-                json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
-                qdata = json.loads(json_str)
-            else:
+            # JSON 파싱 - 단순화된 접근
+            qdata = None
+            
+            # 방법 1: 전체 내용을 JSON으로 파싱 시도 (가장 안전)
+            try:
+                qdata = json.loads(content or "{}")
+            except json.JSONDecodeError:
+                qdata = None
+            
+            # 방법 2: 코드 블록에서 JSON 추출 시도
+            if qdata is None:
+                try:
+                    # 코드 블록 내의 JSON 추출
+                    code_block_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', content or "")
+                    if code_block_match:
+                        json_str = code_block_match.group(1)
+                        # JSON에서 trailing comma 제거
+                        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+                        qdata = json.loads(json_str)
+                        
+                        # 문제 유형에 따른 검증
+                        if question_type == "multiple_choice":
+                            required_fields = ['problemTitle', 'steps']
+                        else:  # subjective
+                            required_fields = ['title', 'task']
+                        
+                        if not (isinstance(qdata, dict) and all(field in qdata for field in required_fields)):
+                            qdata = None
+                except json.JSONDecodeError:
+                    qdata = None
+            
+            # 방법 3: 정규식으로 JSON 추출 (최후의 수단)
+            if qdata is None:
+                try:
+                    # 첫 번째 {부터 마지막 }까지 추출
+                    start = content.find('{')
+                    end = content.rfind('}')
+                    if start != -1 and end != -1 and end > start:
+                        json_str = content[start:end+1]
+                        # JSON에서 trailing comma 제거
+                        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+                        qdata = json.loads(json_str)
+                        
+                        # 문제 유형에 따른 검증
+                        if question_type == "multiple_choice":
+                            required_fields = ['problemTitle', 'steps']
+                        else:  # subjective
+                            required_fields = ['title', 'task']
+                        
+                        if not (isinstance(qdata, dict) and all(field in qdata for field in required_fields)):
+                            qdata = None
+                except json.JSONDecodeError:
+                    qdata = None
+            
+            # 방법 4: 수동으로 JSON 구조 추출 (최후의 수단)
+            required_field = 'problemTitle' if question_type == "multiple_choice" else 'title'
+            if qdata is None or not isinstance(qdata, dict) or required_field not in qdata:
+                try:
+                    # 원본 content에서 직접 필드 추출
+                    content_str = content or ""
+                    
+                    # 간단한 문자열 추출 (정규식 오류 방지)
+                    title = "주관식 문제"
+                    task = "기본 작업"
+                    scenario = "기본 시나리오"
+                    
+                    # title 추출 (간단한 방법)
+                    title_start = content_str.find('"title": "')
+                    if title_start != -1:
+                        title_start += len('"title": "')
+                        title_end = content_str.find('"', title_start)
+                        if title_end != -1:
+                            title = content_str[title_start:title_end]
+                    
+                    # task 추출 (간단한 방법)
+                    task_start = content_str.find('"task": "')
+                    if task_start != -1:
+                        task_start += len('"task": "')
+                        task_end = content_str.find('"', task_start)
+                        if task_end != -1:
+                            task = content_str[task_start:task_end]
+                    
+                    # scenario 추출 (간단한 방법)
+                    scenario_start = content_str.find('"scenario": "')
+                    if scenario_start != -1:
+                        scenario_start += len('"scenario": "')
+                        scenario_end = content_str.find('"', scenario_start)
+                        if scenario_end != -1:
+                            scenario = content_str[scenario_start:scenario_end]
+                    
+                    # difficulty 추출
+                    difficulty_match = re.search(r'"difficulty":\s*"([^"]*)"', content_str)
+                    difficulty = difficulty_match.group(1) if difficulty_match else "normal"
+                    
+                    # estimatedTime 추출
+                    estimated_time_match = re.search(r'"estimatedTime":\s*"([^"]*)"', content_str)
+                    estimated_time = estimated_time_match.group(1) if estimated_time_match else "3분 이내"
+                    
+                    # category 추출
+                    category_match = re.search(r'"category":\s*"([^"]*)"', content_str)
+                    category = category_match.group(1) if category_match else "life"
+                    
+                    # steps 추출 (더 정확한 패턴)
+                    steps_match = re.search(r'"steps":\s*(\[[\s\S]*?\](?=\s*[}\]])', content_str)
+                    steps = []
+                    if steps_match:
+                        try:
+                            steps_str = steps_match.group(1)
+                            steps = json.loads(steps_str)
+                        except:
+                            steps = []
+                    
+                    # 수동으로 구성된 qdata (주관식용)
+                    qdata = {
+                        "lang": "kr",
+                        "category": category,
+                        "title": title,
+                        "task": task,
+                        "scenario": scenario,
+                        "difficulty": difficulty,
+                        "time_limit": estimated_time
+                    }
+                except Exception as e:
+                    st.error(f"JSON 파싱 실패: {e}")
+                    qdata = {"title": content or ""}
+            
+            # 방법 5: 실패 시 기본값
+            if qdata is None:
+                st.error("JSON 파싱 실패 - 기본값 사용")
                 qdata = {"title": content or ""}
+            
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             
             # 새로운 JSON 포맷에 맞게 데이터 구조 변환
             if question_type == "multiple_choice":
                 q = {
-                    "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
+                    # id는 UUID 자동 생성되도록 제거
                     "area": area,  # 원본 area 값 저장
                     "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
                     "difficulty": DIFFICULTY_LEVELS[difficulty],
                     "type": question_type,
                     "question": qdata.get("problemTitle", ""),
                     "ai_generated": True,
-                    "metadata": {
-                        "generated_at": ts,
-                        "model": model,
-                        "lang": qdata.get("lang", "kr"),
-                        "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
-                        "topic": qdata.get("topic", ""),
-                        "estimatedTime": qdata.get("estimatedTime", ""),
-                        "scenario": qdata.get("scenario", ""),
-                        "reference": qdata.get("reference", {}),
-                        "steps": qdata.get("steps", [])
-                    },
+                    "lang": qdata.get("lang", "kr"),
+                    "problem_title": qdata.get("problemTitle", ""),
+                    "estimated_time": qdata.get("estimatedTime", ""),
+                    "scenario": qdata.get("scenario", ""),
+                    "steps": qdata.get("steps", []),
+                    "topic_summary": qdata.get("topic", ""),
+                    "created_by": None,  # Edge Function에서 처리
+                    "image_url": None,
+                    "active": True
                 }
             else:  # subjective
                 q = {
-                    "id": f"Q_AI_{ts}_{random.randint(1000,9999)}",
+                    # id는 UUID 자동 생성되도록 제거
                     "area": area,  # 원본 area 값 저장
                     "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
                     "difficulty": DIFFICULTY_LEVELS[difficulty],
                     "type": question_type,
                     "question": qdata.get("title", ""),
                     "ai_generated": True,
-                    "metadata": {
-                        "generated_at": ts,
-                        "model": model,
-                        "lang": qdata.get("lang", "kr"),
-                        "category": ASSESSMENT_AREAS[area],  # 영어 버전으로 DB 저장
-                        "topic": qdata.get("topic", ""),
-                        "time_limit": qdata.get("time_limit", ""),
-                        "topic_summary": qdata.get("topic_summary", ""),
-                        "scenario": qdata.get("scenario", ""),
-                        "goal": qdata.get("goal", []),
-                        "task": qdata.get("task", ""),
-                        "reference": qdata.get("reference", {}),
-                        "first_question": qdata.get("first_question", []),
-                        "requirements": qdata.get("requirements", []),
-                        "constraints": qdata.get("constraints", []),
-                        "guide": qdata.get("guide", {}),
-                        "evaluation": qdata.get("evaluation", [])
-                    },
+                    "lang": qdata.get("lang", "kr"),
+                    "topic": qdata.get("topic", ""),
+                    "time_limit": qdata.get("time_limit", ""),
+                    "topic_summary": qdata.get("topic_summary", ""),
+                    "title": qdata.get("title", ""),
+                    "scenario": qdata.get("scenario", ""),
+                    "goal": qdata.get("goal", []),
+                    "first_question": qdata.get("first_question", []),
+                    "requirements": qdata.get("requirements", []),
+                    "constraints": qdata.get("constraints", []),
+                    "guide": qdata.get("guide", {}),
+                    "evaluation": qdata.get("evaluation", []),
+                    "task": qdata.get("task", ""),
+                    "reference": qdata.get("reference", {}),
+                    "created_by": None,  # Edge Function에서 처리
+                    "active": True
                 }
             st.session_state.last_raw_content = content
             return q

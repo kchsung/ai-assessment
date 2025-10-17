@@ -211,7 +211,7 @@ def render(st):
                     })
                     
                     # API 호출 제한을 위한 대기
-                    time.sleep(1)
+                    # time.sleep(1) 제거 - 성능 개선
                     
                 except Exception as e:
                     # 실패 결과 저장

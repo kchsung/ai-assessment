@@ -29,27 +29,30 @@ class ProblemCorrectionService:
         else:
             self.initialization_error = "google-generativeai 패키지가 설치되지 않았습니다"
     
-    def get_correction_prompt(self, category: str = None) -> str:
+    def get_correction_prompt(self, question_type: str = "subjective") -> str:
         """
         Supabase prompts 테이블에서 교정 프롬프트를 가져옵니다.
         
         Args:
-            category: 프롬프트 카테고리 (사용하지 않음, 고정 ID 사용)
+            question_type: 문제 유형 ('multiple_choice' 또는 'subjective')
             
         Returns:
             str: 교정 프롬프트
         """
         try:
-            # print(f"🔍 get_correction_prompt 호출됨 - category: '{category}'")
             
             db = st.session_state.get("db")
             if not db:
                 # print("❌ 데이터베이스 연결이 없습니다. 기본 프롬프트를 사용합니다.")
                 return DEFAULT_PROBLEM_CORRECTION_PROMPT
             
-            # 고정된 교정용 프롬프트 ID 사용 (수동교정과 동일)
-            CORRECTION_PROMPT_ID = "9e55115e-0198-401d-8633-075bc8a25201"
-            # print(f"🎯 교정용 프롬프트 ID 사용: {CORRECTION_PROMPT_ID}")
+            # 문제 유형에 따른 교정용 프롬프트 ID 사용
+            if question_type == "multiple_choice":
+                CORRECTION_PROMPT_ID = "7af9fbda-0e5d-45ee-ada7-e0365e5f6d94"  # 객관식 교정용
+            else:
+                CORRECTION_PROMPT_ID = "9e55115e-0198-401d-8633-075bc8a25201"  # 주관식 교정용
+            
+            # print(f"🎯 교정용 프롬프트 ID 사용: {CORRECTION_PROMPT_ID} (유형: {question_type})")
             
             prompt = db.get_prompt_by_id(CORRECTION_PROMPT_ID)
             if prompt:
@@ -64,13 +67,13 @@ class ProblemCorrectionService:
             # print(f"프롬프트 조회 중 오류 발생: {e}")
             return DEFAULT_PROBLEM_CORRECTION_PROMPT
     
-    def correct_problem(self, problem_json: str, category: str = None) -> str:
+    def correct_problem(self, problem_json: str, question_type: str = "subjective") -> str:
         """
         문제 JSON을 교정합니다.
         
         Args:
             problem_json: 교정할 문제의 JSON 문자열
-            category: 프롬프트 카테고리
+            question_type: 문제 유형 ('multiple_choice' 또는 'subjective')
             
         Returns:
             str: 교정된 문제의 JSON 문자열
@@ -83,7 +86,7 @@ class ProblemCorrectionService:
         
         try:
             # 교정 프롬프트 가져오기
-            system_prompt = self.get_correction_prompt(category)
+            system_prompt = self.get_correction_prompt(question_type)
             
             # 사용자 프롬프트 구성
             user_prompt = f"다음 문제 JSON을 교정해주세요:\n\n{problem_json}"
@@ -94,7 +97,6 @@ class ProblemCorrectionService:
                 user_prompt=user_prompt
             )
             
-            # print(f"DEBUG: 문제 교정 결과 길이: {len(corrected_result) if corrected_result else 0}")
             return corrected_result
             
         except Exception as e:
@@ -104,13 +106,13 @@ class ProblemCorrectionService:
         """문제 교정 서비스 사용 가능 여부 확인"""
         return self.gemini_client is not None and GEMINI_AVAILABLE
     
-    def auto_correct_questions(self, questions: list, category: str = None) -> dict:
+    def auto_correct_questions(self, questions: list, question_type: str = "subjective") -> dict:
         """
         여러 문제를 자동으로 교정합니다.
         
         Args:
             questions: 교정할 문제 리스트
-            category: 프롬프트 카테고리
+            question_type: 문제 유형 ('multiple_choice' 또는 'subjective')
             
         Returns:
             dict: 교정 결과 통계
@@ -128,7 +130,7 @@ class ProblemCorrectionService:
                 question_json = json.dumps(question, ensure_ascii=False, indent=2)
                 
                 # 교정 실행
-                corrected_result = self.correct_problem(question_json, category)
+                corrected_result = self.correct_problem(question_json, question_type)
                 
                 # 결과 저장
                 results["details"].append({

@@ -60,23 +60,27 @@ def inject_card_css():
     st.markdown("""
     <style>
     .ql-card {
-      border: 1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(0,0,0,.1);
+      background: #f8f9fa;
       border-radius: 10px;
       padding: 12px 14px;
       margin: 10px 0 14px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.05);
     }
-    .ql-header { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-    .ql-title { font-size:14px; font-weight:600; line-height:1.2; margin:0; }
+    .ql-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .ql-title { font-size:16px; font-weight:600; line-height:1.3; margin:0; color:#1a1a1a; }
+    
+    .ql-task { margin-bottom:8px; }
+    .ql-task-text { font-size:14px; color:#2d2d2d; line-height:1.4; font-weight:500; }
 
     .ql-meta {
       display:flex; gap:12px; align-items:center; flex-wrap:wrap;
-      font-size:12px; color:rgba(255,255,255,.65);
+      font-size:11px; color:#333333;
       margin:2px 0 2px;
     }
     .ql-item { display:inline-flex; gap:6px; align-items:center; }
-    .ql-label { opacity:.75; }
-    .ql-value { color:rgba(255,255,255,.9); }
+    .ql-label { opacity:.8; color:#555555; font-weight:500; }
+    .ql-value { color:#1a1a1a; font-weight:600; }
 
     .badge { 
       display:inline-flex; align-items:center; gap:6px;
@@ -86,8 +90,8 @@ def inject_card_css():
     .badge-success { background: rgba(16,185,129,.15); color:#10b981; border-color: rgba(16,185,129,.35); }
     .badge-warn    { background: rgba(245,158,11,.15); color:#f59e0b; border-color: rgba(245,158,11,.35); }
 
-    .ql-body { font-size:13px; color:rgba(255,255,255,.9); }
-    .ql-body .ql-label { font-weight:600; margin-right:6px; color:rgba(255,255,255,.85); }
+    .ql-body { font-size:13px; color:#000000; }
+    .ql-body .ql-label { font-weight:600; margin-right:6px; color:#000000; }
 
     /* 혹시 우측 영역에 남아있는 입력 위젯(흰 띠)이 있으면 숨김(선택) */
     [data-testid="stTextInput"] { display:none; }
@@ -98,32 +102,32 @@ def inject_card_css():
 def render_question_card(i: int, q: dict):
     """문제 카드를 렌더링"""
     title = (q.get("title") or "제목 없음").strip()
-    question_text = (q.get("content") or "").strip()
-    area = q.get("area", "N/A")
-    category  = q.get("category", "N/A")
-    diff  = q.get("difficulty_display", "N/A")
-    qtype = q.get("type_display", "N/A")
-    saved = bool(q.get("saved_to_db"))
+    task = q.get("task", "")
+    category = q.get("category", "N/A")
+    difficulty = q.get("difficulty", "N/A")
+    
+    # 유형은 테이블에 따라 자동 결정
+    question_type = q.get("type", "subjective")
+    if question_type == "multiple_choice":
+        type_display = "객관식"
+    else:
+        type_display = "주관식"
 
-    # 메타 라인 끝에 붙일 배지
-    badge = '<span class="badge badge-success">✅ DB에 저장됨</span>' if saved \
-            else '<span class="badge badge-warn">⚠️ DB 저장 안됨</span>'
-
-    # 제목에 question_text 내용 붙이기
-    full_title = question_text if question_text else title
-
-    # 헤더(작은 제목) + 메타(배지 포함)
+    # 제목과 Task를 분리해서 표시
     st.markdown(f"""
     <div class="ql-card">
       <div class="ql-header">
-        <div class="ql-title">문제 {i}: {full_title}</div>
+        <div class="ql-title">문제 {i}: {title}</div>
+      </div>
+      
+      <div class="ql-task">
+        <div class="ql-task-text">{task}</div>
       </div>
 
       <div class="ql-meta">
-        <div class="ql-item"><span class="ql-label">평가 영역</span><span class="ql-value">{area}</span></div>
-        <div class="ql-item"><span class="ql-label">난이도</span><span class="ql-value">{diff}</span></div>
-        <div class="ql-item"><span class="ql-label">유형</span><span class="ql-value">{qtype}</span></div>
-        {badge}
+        <div class="ql-item"><span class="ql-label">평가 영역</span><span class="ql-value">{category}</span></div>
+        <div class="ql-item"><span class="ql-label">난이도</span><span class="ql-value">{difficulty}</span></div>
+        <div class="ql-item"><span class="ql-label">유형</span><span class="ql-value">{type_display}</span></div>
       </div>
     </div>
     """, unsafe_allow_html=True)
@@ -248,11 +252,15 @@ def render(st):
             else:
                 st.info("아직 생성된 문제가 없습니다. 좌측에서 자동생성을 시작해보세요.")
     
-    # 자동생성 로직 실행
+    # 자동생성 로직 실행 - 한 개씩 생성
     if st.session_state.auto_generate_running and not st.session_state.auto_generate_stop_requested:
         if len(st.session_state.auto_generated_questions) < st.session_state.auto_generate_total_count:
-            # 다음 문제 생성
-            generate_next_question(st, selected_area, selected_difficulty, selected_type, additional_requirements)
+            # 한 개씩 문제 생성
+            current_count = len(st.session_state.auto_generated_questions) + 1
+            
+            with st.spinner(f"문제 생성 중... ({current_count}/{st.session_state.auto_generate_total_count})"):
+                generate_next_question(st, selected_area, selected_difficulty, selected_type, additional_requirements)
+                st.rerun()  # 한 개 생성 후 즉시 rerun
         else:
             # 모든 문제 생성 완료
             st.session_state.auto_generate_running = False
@@ -298,24 +306,58 @@ def generate_next_question(st, selected_area, selected_difficulty, selected_type
             return
         
         # 문제 생성
-        with st.spinner("문제 생성 중..."):
-            result = generator.generate_with_ai(
-                area=area,
-                difficulty=difficulty,
-                question_type=question_type,
-                user_prompt_extra="",
-                system_prompt_extra=additional_requirements or ""
-            )
+        result = generator.generate_with_ai(
+            area=area,
+            difficulty=difficulty,
+            question_type=question_type,
+            user_prompt_extra="",
+            system_prompt_extra=additional_requirements or ""
+        )
         
         if result:
-            # 생성된 문제를 DB에 저장
+            # 생성된 문제를 DB에 저장 (문제 타입에 따라 적절한 테이블에 저장)
             try:
                 db = st.session_state.get("db")
                 if db:
-                    db.save_question(result)
-                    question_title = result.get('title') or result.get('question', '제목 없음')
-                    clean_title = sanitize_title(question_title)
-                    st.success(f"✅ 문제가 DB에 저장되었습니다: {clean_title[:50]}...")
+                    question_type = result.get("type", "subjective")
+                    
+                    # 저장 전 상세 로그
+                    st.info("🔍 데이터베이스 저장 전 데이터 검증:")
+                    st.info(f"  문제 유형: {question_type}")
+                    st.info(f"  전체 데이터 키: {list(result.keys())}")
+                    
+                    # 각 필드별 상세 검증
+                    for key, value in result.items():
+                        st.info(f"  {key}: {value} (타입: {type(value)})")
+                        if key == "steps" and isinstance(value, list):
+                            st.info(f"    steps 길이: {len(value)}")
+                            if len(value) > 0:
+                                st.info(f"    첫 번째 step: {value[0]}")
+                    
+                    if question_type == "multiple_choice":
+                        # 객관식 문제는 questions_multiple_choice 테이블에 저장
+                        st.info("📝 객관식 문제 저장 시도 중...")
+                        try:
+                            save_result = db.save_multiple_choice_question(result)
+                            st.info(f"📝 저장 결과: {save_result}")
+                            if save_result:
+                                st.success("✅ 객관식 문제 저장 성공!")
+                            else:
+                                st.error("❌ 객관식 문제 저장 실패!")
+                        except Exception as save_error:
+                            st.error(f"❌ 객관식 문제 저장 중 오류: {save_error}")
+                    else:
+                        # 주관식 문제는 questions_subjective 테이블에 저장
+                        st.info("📝 주관식 문제 저장 시도 중...")
+                        try:
+                            save_result = db.save_subjective_question(result)
+                            st.info(f"📝 저장 결과: {save_result}")
+                            if save_result:
+                                st.success("✅ 주관식 문제 저장 성공!")
+                            else:
+                                st.error("❌ 주관식 문제 저장 실패!")
+                        except Exception as save_error:
+                            st.error(f"❌ 주관식 문제 저장 중 오류: {save_error}")
                 else:
                     st.warning("⚠️ DB 연결이 없어 문제를 저장할 수 없습니다.")
             except Exception as e:
@@ -326,22 +368,16 @@ def generate_next_question(st, selected_area, selected_difficulty, selected_type
             clean_title = sanitize_title(question_title)
             question_info = {
                 "title": clean_title,
+                "task": result.get("task", ""),
                 "category": area,
                 "difficulty": difficulty,
-                "difficulty_display": DIFFICULTY_LEVELS.get(difficulty, difficulty),
                 "type": question_type,
-                "type_display": question_type,
-                "content": result.get("question", ""),   # 본문은 그대로
-                "answer": extract_answer(result),
-                "raw_data": result,
                 "saved_to_db": True
             }
             
             st.session_state.auto_generated_questions.append(question_info)
             
-            # 잠시 대기 후 다음 문제 생성
-            time.sleep(1)
-            st.rerun()
+            # 한 개씩 생성하므로 rerun은 메인 로직에서 처리
             
         else:
             st.error("문제 생성 실패: 알 수 없는 오류")

@@ -45,12 +45,6 @@ def get_multiple_choice_prompt(area_display: str, difficulty_display: str, guide
   "difficulty": "{difficulty}",
   "estimatedTime": "{time_limit}",
   "scenario": "문제 상황 및 배경 설명",
-  "reference": {{
-    "metrics": {{"paid_conv_rate": "유료 전환율 2.3%", "retention_d7": "7일 리텐션 45%"}},
-    "funnel": {{"signup": "회원가입 단계별 데이터"}},
-    "user_feedback": [{{"tag": "사용자 피드백 태그", "content": "피드백 내용"}}],
-    "competitor_strategy": {{"campaign": {{"A": "경쟁사 A 전략", "B": "경쟁사 B 전략"}}}}
-  }},
   "steps": [
     {{
       "step": 1,
