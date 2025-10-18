@@ -224,10 +224,11 @@ class EdgeDBClient:
         """qlearn_problems_en 테이블에서 번역된 문제 조회"""
         return self._call("get_qlearn_problems_en", filters or {}) or []
     
-    def update_qlearn_problem_is_en(self, problem_id: str, is_en: bool = True) -> bool:
-        """qlearn_problems 테이블의 is_en 필드 업데이트"""
-        self._call("update_qlearn_problem_is_en", {"problem_id": problem_id, "is_en": is_en})
-        return True
+    # is_en 필드가 제거되어 해당 메서드 제거
+    # def update_qlearn_problem_is_en(self, problem_id: str, is_en: bool = True) -> bool:
+    #     """qlearn_problems 테이블의 is_en 필드 업데이트"""
+    #     self._call("update_qlearn_problem_is_en", {"problem_id": problem_id, "is_en": is_en})
+    #     return True
     
     # qlearn_problems_multiple 테이블 관련 메서드들
     def save_qlearn_problem_multiple(self, problem: dict) -> bool:

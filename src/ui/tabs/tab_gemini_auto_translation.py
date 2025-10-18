@@ -71,12 +71,12 @@ def render(st):
         )
     
     with col3:
-        # 영문 번역 필터
-        is_en_filter = st.selectbox(
-            "영문 번역",
-            ["전체", "false", "true"],
+        # 영문 번역 필터 (is_en 필드 제거로 인해 기능 비활성화)
+        st.selectbox(
+            "영문 번역 (기능 비활성화)",
+            ["전체"],
             key="auto_translation_is_en",
-            index=1  # 기본값: false (미번역)
+            disabled=True
         )
     
     # 검색 버튼
@@ -89,11 +89,7 @@ def render(st):
         if selected_difficulty != "전체":
             filters["difficulty"] = selected_difficulty
         
-        # is_en 필터 적용
-        if is_en_filter == "false":
-            filters["is_en"] = False
-        elif is_en_filter == "true":
-            filters["is_en"] = True
+        # is_en 필터 제거됨 (필드 삭제로 인해)
         
         try:
             problems = db.get_qlearn_problems(filters)
@@ -159,10 +155,9 @@ def render(st):
                         st.session_state.auto_translation_selected.remove(i)
             
             with col2:
-                is_en_badge = "✅ 영문번역됨" if problem.get("is_en") else "❌ 영문미번역"
                 st.markdown(
                     f"**{i+1}. [{problem.get('domain', 'N/A')}] {problem.get('title', 'No Title')[:70]}...** "
-                    f"({problem.get('difficulty', 'N/A')}) {is_en_badge}"
+                    f"({problem.get('difficulty', 'N/A')})"
                 )
         
         # 번역 진행 중
@@ -200,8 +195,7 @@ def render(st):
                     # 번역된 문제를 qlearn_problems_en 테이블에 저장
                     db.save_qlearn_problem_en(translated_problem)
                     
-                    # 원본 문제의 is_en 필드 업데이트
-                    db.update_qlearn_problem_is_en(problem.get("id"), True)
+                    # is_en 필드가 제거되어 상태 업데이트 불필요
                     
                     # 성공 결과 저장
                     st.session_state.auto_translation_results.append({

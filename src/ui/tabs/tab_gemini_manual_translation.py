@@ -64,11 +64,12 @@ def render(st):
         )
     
     with col3:
-        # 영문 번역 필터
-        is_en_filter = st.selectbox(
-            "영문 번역",
-            ["전체", "false", "true"],
-            key="manual_translation_is_en"
+        # 영문 번역 필터 (is_en 필드 제거로 인해 기능 비활성화)
+        st.selectbox(
+            "영문 번역 (기능 비활성화)",
+            ["전체"],
+            key="manual_translation_is_en",
+            disabled=True
         )
     
     # 검색 버튼
@@ -81,11 +82,7 @@ def render(st):
         if selected_difficulty != "전체":
             filters["difficulty"] = selected_difficulty
         
-        # is_en 필터 적용
-        if is_en_filter == "false":
-            filters["is_en"] = False
-        elif is_en_filter == "true":
-            filters["is_en"] = True
+        # is_en 필터 제거됨 (필드 삭제로 인해)
         
         try:
             problems = db.get_qlearn_problems(filters)
@@ -103,7 +100,7 @@ def render(st):
         
         # 문제 선택
         problem_options = [
-            f"{i+1}. [{p.get('domain', 'N/A')}] {p.get('title', 'No Title')[:50]}... ({'영문번역됨' if p.get('is_en') else '영문미번역'})"
+            f"{i+1}. [{p.get('domain', 'N/A')}] {p.get('title', 'No Title')[:50]}..."
             for i, p in enumerate(problems)
         ]
         
@@ -133,8 +130,7 @@ def render(st):
                 st.metric("시간 제한", selected_problem.get("time_limit", "N/A"))
             
             with col4:
-                is_en_status = "✅ 영문번역됨" if selected_problem.get("is_en") else "❌ 영문미번역"
-                st.metric("영문 번역 상태", is_en_status)
+                st.metric("영문 번역 상태", "확인 불가")
             
             # 원본 문제 내용 표시
             with st.expander("🔍 원본 문제 내용 보기", expanded=True):
@@ -163,8 +159,7 @@ def render(st):
             # 번역 버튼
             st.markdown("---")
             
-            if selected_problem.get("is_en"):
-                st.warning("⚠️ 이 문제는 이미 번역되었습니다. 다시 번역하시겠습니까?")
+            # is_en 필드가 제거되어 번역 상태 확인 불가
             
             if st.button("🌐 번역 시작", key="start_manual_translation", type="primary"):
                 with st.spinner("번역 중... 잠시만 기다려주세요 ⏳"):
@@ -178,8 +173,7 @@ def render(st):
                         # 번역된 문제를 qlearn_problems_en 테이블에 저장
                         db.save_qlearn_problem_en(translated_problem)
                         
-                        # 원본 문제의 is_en 필드 업데이트
-                        db.update_qlearn_problem_is_en(selected_problem.get("id"), True)
+                        # is_en 필드가 제거되어 상태 업데이트 불필요
                         
                         # 세션 상태에 번역 결과 저장
                         st.session_state.manual_translation_result = translated_problem

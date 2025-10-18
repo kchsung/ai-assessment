@@ -95,13 +95,14 @@ serve(async (req) => {
         return await updateQlearnProblem(supabaseClient, params);
       case 'update_question_review_done':
         return await updateQuestionReviewDone(supabaseClient, params);
-      // 번역 관련 액션들
-      case 'save_qlearn_problem_en':
-        return await saveQlearnProblemEn(supabaseClient, params);
-      case 'get_qlearn_problems_en':
-        return await getQlearnProblemsEn(supabaseClient, params);
-      case 'update_qlearn_problem_is_en':
-        return await updateQlearnProblemIsEn(supabaseClient, params);
+      // 번역 관련 액션들 (함수 정의 필요)
+      // case 'save_qlearn_problem_en':
+      //   return await saveQlearnProblemEn(supabaseClient, params);
+      // case 'get_qlearn_problems_en':
+      //   return await getQlearnProblemsEn(supabaseClient, params);
+      // is_en 필드가 제거되어 해당 액션 제거
+      // case 'update_qlearn_problem_is_en':
+      //   return await updateQlearnProblemIsEn(supabaseClient, params);
       case 'get_multiple_choice_question_by_id':
         return await getMultipleChoiceQuestionById(supabaseClient, params);
       case 'get_questions_data_version':
