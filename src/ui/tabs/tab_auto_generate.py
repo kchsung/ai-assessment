@@ -25,14 +25,18 @@ def sanitize_title(raw: str) -> str:
     return text or "제목 없음"
 
 def sanitize_content(raw: str) -> str:
-    """본문에서 키보드 힌트 토큰을 제거하는 함수"""
+    """본문에서 키보드 힌트 토큰과 HTML 태그를 제거하는 함수"""
     if not raw:
         return ""
     text = str(raw)
+    # HTML 태그 제거
+    text = re.sub(r'<[^>]+>', '', text)
     # 라인 단위로 key/keyboard 안내만 있는 줄 제거
     text = re.sub(r'(?im)^\s*(?:key|keyboard)\s*[:=].*\n?', '', text)
     # inline keyboard_arrow_* 잔여 제거
     text = re.sub(r'(?i)\bkeyboard_arrow_(left|right|up|down)\b', '', text)
+    # 연속된 공백 정리
+    text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
 def extract_answer(question_data):
@@ -106,6 +110,10 @@ def render_question_card(i: int, q: dict):
     category = q.get("category", "N/A")
     difficulty = q.get("difficulty", "N/A")
     
+    # HTML 태그 제거 및 텍스트 정리
+    clean_title = sanitize_content(title)
+    clean_task = sanitize_content(task)
+    
     # 유형은 테이블에 따라 자동 결정
     question_type = q.get("type", "subjective")
     if question_type == "multiple_choice":
@@ -117,11 +125,11 @@ def render_question_card(i: int, q: dict):
     st.markdown(f"""
     <div class="ql-card">
       <div class="ql-header">
-        <div class="ql-title">문제 {i}: {title}</div>
+        <div class="ql-title">문제 {i}: {clean_title}</div>
       </div>
       
       <div class="ql-task">
-        <div class="ql-task-text">{task}</div>
+        <div class="ql-task-text">{clean_task}</div>
       </div>
 
       <div class="ql-meta">
