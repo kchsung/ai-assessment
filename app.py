@@ -21,8 +21,6 @@ from src.ui.tab_feedback import render as render_feedback
 from src.ui.tabs.tab_dashboard import render as render_dashboard
 from src.ui.tabs.tab_settings import render as render_settings
 from src.ui.tabs.tab_auto_generate import render as render_auto_generate
-from src.ui.tabs.tab_gemini_manual_review import render as render_gemini_manual_review
-from src.ui.tabs.tab_gemini_auto_review import render as render_gemini_auto_review
 from src.ui.tabs.tab_gemini_manual_translation import render as render_gemini_manual_translation
 from src.ui.tabs.tab_gemini_auto_translation import render as render_gemini_auto_translation
 from src.ui.tabs.tab_problem_correction import render as render_problem_correction
@@ -69,8 +67,6 @@ def init_state():
     st.session_state.hitl = HITLManager(st.session_state.db)
 
     # 기타 selectbox 방어용 상태
-    st.session_state.setdefault("gemini_auto_review_selected_area", "")
-    st.session_state.setdefault("gemini_auto_review_running", False)
     st.session_state.setdefault("auto_generate_running", False)
     st.session_state.setdefault("auto_generate_stop_requested", False)
     st.session_state.setdefault("auto_generated_questions", [])
@@ -104,20 +100,17 @@ with header:
 
 # 이제 탭을 생성 (위쪽 레이아웃이 rerun에도 변하지 않음)
 TAB_NAMES = ["📋 Overview", "📝 문제 생성", "🤖 문제 자동생성", "📚 문제 은행",
-             "🤖 문제 교정", "🔍 제미나이 수동 검토", "🤖 제미나이 자동 검토",
-             "🌐 수동 번역(인공지능 검토)", "🤖 자동 번역(인공지능 검토)", 
+             "🤖 문제 교정", "🌐 수동 번역(인공지능 검토)", "🤖 자동 번역(인공지능 검토)", 
              "💬 피드백 & HITL", "📊 분석 대시보드", "⚙️ 설정"]
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = st.tabs(TAB_NAMES)
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs(TAB_NAMES)
 
 with tab1:  render_overview(st)
 with tab2:  render_create(st)
 with tab3:  render_auto_generate(st)
 with tab4:  render_bank(st)
 with tab5:  render_problem_correction(st)
-with tab6:  render_gemini_manual_review(st)
-with tab7:  render_gemini_auto_review(st)
-with tab8:  render_gemini_manual_translation(st)
-with tab9:  render_gemini_auto_translation(st)
-with tab10: render_feedback(st)
-with tab11: render_dashboard(st)
-with tab12: render_settings(st)
+with tab6:  render_gemini_manual_translation(st)
+with tab7:  render_gemini_auto_translation(st)
+with tab8:  render_feedback(st)
+with tab9:  render_dashboard(st)
+with tab10: render_settings(st)
