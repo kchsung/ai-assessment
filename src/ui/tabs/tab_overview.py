@@ -31,29 +31,29 @@ def render(st):
             flex-wrap: wrap;
         }
         .process-box {
-            padding: 10px;
+            padding: 15px;
             border-radius: 8px;
-            width: calc((100% - 32px) / 4);
-            min-width: 220px;
-            max-width: 250px;
+            width: calc((100% - 24px) / 4);
+            min-width: 280px;
+            max-width: 320px;
             text-align: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             flex-shrink: 0;
         }
         .process-box h3 {
             margin: 0;
-            font-size: 16px;
-            line-height: 1.2;
+            font-size: 20px;
+            line-height: 1.3;
         }
         .process-box p {
-            margin: 3px 0 0 0;
-            font-size: 12px;
-            line-height: 1.1;
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            line-height: 1.2;
         }
         .process-box div {
-            margin-top: 5px;
-            font-size: 10px;
-            line-height: 1.1;
+            margin-top: 8px;
+            font-size: 12px;
+            line-height: 1.3;
         }
         .arrow-horizontal {
             font-size: 14px;
@@ -197,60 +197,3 @@ def render(st):
         4. 최종 승인 후 문제 은행에 등록
         """)
     
-    # 시스템 특징
-    st.markdown("### ✨ 시스템 특징")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("""
-        **🤖 AI 기반 자동화**
-        - GPT 모델을 활용한 지능형 문제 생성
-        - 자동 난이도 평가 및 품질 검증
-        - 효율적인 번역 및 정규화
-        """)
-    
-    with col2:
-        st.markdown("""
-        **👥 인간-AI 협업**
-        - HITL(Human-in-the-Loop) 프로세스
-        - 전문가 피드백 통합
-        - 품질 보장을 위한 다단계 검토
-        """)
-    
-    with col3:
-        st.markdown("""
-        **📊 체계적 관리**
-        - 문제 은행을 통한 체계적 저장
-        - 메타데이터 기반 분류 및 검색
-        - 분석 대시보드를 통한 인사이트
-        """)
-    
-    # 사용 가이드
-    st.markdown("### 🚀 시작하기")
-    
-    st.markdown("""
-    **1단계**: 📝 **문제 생성** 탭에서 수동으로 첫 번째 문제를 생성하거나, 🤖 **문제 자동생성** 탭에서 AI가 대량으로 문제를 생성하도록 설정하세요.
-    
-    **2단계**: 📚 **문제 은행** 탭에서 생성된 문제를 확인하고 체계적으로 관리하세요.
-    
-    **3단계**: 🤖 **문제 교정** 탭에서 AI가 자동으로 문제 품질을 개선하고 오류를 수정하도록 하세요.
-    
-    **4단계**: 🌐 **언어별 번역** 탭에서 수동 번역 또는 자동 번역을 통해 다국어 문제를 생성하세요.
-    
-    **5단계**: 💬 **피드백 & HITL** 탭에서 전문가 피드백을 수집하고 최종 품질을 보장하세요.
-    
-    **6단계**: ⚙️ **설정** 탭에서 API 키와 기본 설정을 구성하고, 📊 **분석 대시보드** 탭에서 전체적인 통계를 확인하세요.
-    """)
-    
-    # 주의사항
-    st.markdown("### ⚠️ 주의사항")
-    
-    st.warning("""
-    - **API 키 설정**: OpenAI API 키와 Gemini API 키가 필요합니다. 설정 탭에서 구성해주세요.
-    - **인터넷 연결**: AI 모델 사용을 위해 안정적인 인터넷 연결이 필요합니다.
-    - **데이터 보안**: 민감한 정보는 문제에 포함하지 마세요.
-    - **품질 검토**: AI 생성 및 교정 결과는 반드시 전문가 검토를 거쳐주세요.
-    - **번역 품질**: 자동 번역 결과는 수동 검토를 통해 품질을 보장하세요.
-    - **피드백 활용**: HITL 프로세스를 통해 전문가 피드백을 적극 활용하세요.
-    """)
