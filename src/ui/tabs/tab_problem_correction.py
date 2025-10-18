@@ -719,7 +719,7 @@ def map_question_to_qlearn_format(question: dict) -> dict:
         "topic": metadata.get("topic", question.get("topic", "")),
         "difficulty": valid_difficulty,  # 변환된 difficulty 사용
         "time_limit": time_limit,
-        "topic_summary": metadata.get("topic", question.get("topic", "")),
+        "topic_summary": question.get("topic_summary", metadata.get("topic_summary", metadata.get("topic", question.get("topic", "")))),
         "title": question_title,
         "scenario": scenario,
         "goal": processed_goal,
@@ -802,7 +802,7 @@ def map_multiple_choice_to_qlearn_format(question: dict) -> dict:
         "updated_at": now.isoformat(),
         "image_url": question.get("image_url"),
         "active": False,  # 기본값
-        "topic_summary": question.get("topic_summary", "")
+        "topic_summary": question.get("topic_summary", metadata.get("topic_summary", metadata.get("topic", question.get("topic", ""))))
     }
     
     # 매핑 완료
