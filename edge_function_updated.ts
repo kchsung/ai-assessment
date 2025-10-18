@@ -834,7 +834,7 @@ async function saveMultipleChoiceQuestion(supabaseClient, params) {
     // 문제 상태 테이블에 상태 정보 저장 (생성된 UUID 사용)
     const statusData = {
       question_id: data[0].id, // 생성된 UUID 사용
-      question_type: 'multiple_choice',
+      question_type: params.type || 'multiple_choice', // params에서 전달받은 type 사용
       review_done: params.review_done || false,
       translation_done: params.translation_done || false,
       ai_generated: params.ai_generated || false,
@@ -910,7 +910,7 @@ async function saveSubjectiveQuestion(supabaseClient, params) {
     // 문제 상태 테이블에 상태 정보 저장 (생성된 UUID 사용)
     const statusData = {
       question_id: data[0].id, // 생성된 UUID 사용
-      question_type: 'subjective',
+      question_type: params.type || 'subjective', // params에서 전달받은 type 사용
       review_done: params.review_done || false,
       translation_done: params.translation_done || false,
       ai_generated: params.ai_generated || false,
