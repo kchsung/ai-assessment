@@ -194,6 +194,12 @@ def render(st):
         st.markdown("### 📋 검색 결과")
         qs = st.session_state.get("filtered_questions", [])
         
+        # qs가 리스트인지 확인하고, 아니면 빈 리스트로 초기화
+        if not isinstance(qs, list):
+            print(f"⚠️ filtered_questions가 리스트가 아님: {type(qs)}")
+            qs = []
+            st.session_state.filtered_questions = qs
+        
         if qs:
             st.markdown(f"**총 {len(qs)}개 문제**")
             
@@ -534,14 +540,19 @@ def render(st):
                 return st.session_state.db.get_feedback_stats(question_id)
             
             stats = get_cached_feedback_stats(selected_q["id"])
-            if stats:
+            if stats and isinstance(stats, dict):
                 st.markdown("### 📊 피드백 통계")
                 col_stat1, col_stat2, col_stat3 = st.columns(3)
                 with col_stat1:
-                    st.metric("피드백 수", stats['feedback_count'])
+                    feedback_count = stats.get('feedback_count', 0)
+                    st.metric("피드백 수", feedback_count)
                 with col_stat2:
-                    st.metric("평균 난이도", f"{stats['avg_difficulty']:.1f}")
+                    avg_difficulty = stats.get('avg_difficulty', 0)
+                    st.metric("평균 난이도", f"{avg_difficulty:.1f}")
                 with col_stat3:
-                    st.metric("평균 관련성", f"{stats['avg_relevance']:.1f}")
+                    avg_relevance = stats.get('avg_relevance', 0)
+                    st.metric("평균 관련성", f"{avg_relevance:.1f}")
+            else:
+                st.info("피드백 통계를 불러올 수 없습니다.")
         else:
             st.info("좌측에서 문제를 선택하면 상세 내용이 여기에 표시됩니다.")

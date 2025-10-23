@@ -80,7 +80,7 @@ class EdgeDBClient:
                 if not data.get("ok"):
                     raise RuntimeError(f"Edge failure: {data.get('error')}")
                 
-                return data.get("data")
+                return data  # 전체 응답 객체 반환 (data만이 아닌)
                 
             except (requests.exceptions.ChunkedEncodingError, 
                     requests.exceptions.ConnectionError,
@@ -104,7 +104,13 @@ class EdgeDBClient:
             raise e
 
     def get_questions(self, filters: dict | None = None):
-        return self._call("get_questions", filters or {}) or []
+        try:
+            result = self._call("get_questions", filters or {})
+            if isinstance(result, dict) and result.get("ok") and "data" in result:
+                return result["data"]
+            return []
+        except Exception as e:
+            return []
 
     # 새로운 테이블 분리 메서드들
     def save_multiple_choice_question(self, question: dict) -> bool:
@@ -125,11 +131,23 @@ class EdgeDBClient:
 
     def get_multiple_choice_questions(self, filters: dict | None = None):
         """객관식 문제 조회"""
-        return self._call("get_multiple_choice_questions", filters or {}) or []
+        try:
+            result = self._call("get_multiple_choice_questions", filters or {})
+            if isinstance(result, dict) and result.get("ok") and "data" in result:
+                return result["data"]
+            return []
+        except Exception as e:
+            return []
 
     def get_subjective_questions(self, filters: dict | None = None):
         """주관식 문제 조회"""
-        return self._call("get_subjective_questions", filters or {}) or []
+        try:
+            result = self._call("get_subjective_questions", filters or {})
+            if isinstance(result, dict) and result.get("ok") and "data" in result:
+                return result["data"]
+            return []
+        except Exception as e:
+            return []
 
     def update_multiple_choice_question(self, question_id: str, updates: dict) -> bool:
         """객관식 문제 업데이트"""
@@ -154,18 +172,36 @@ class EdgeDBClient:
         self._call("save_feedback", feedback); return True
 
     def get_feedback_stats(self, question_id: str) -> dict | None:
-        return self._call("get_feedback_stats", {"question_id": question_id})
+        try:
+            result = self._call("get_feedback_stats", {"question_id": question_id})
+            if isinstance(result, dict) and result.get("ok") and "data" in result:
+                return result["data"]
+            return None
+        except Exception as e:
+            return None
 
     def get_prompts(self, category: str = None, lang: str = "kr"):
         """프롬프트 조회 - category와 lang으로 필터링"""
-        params = {"lang": lang}
-        if category:
-            params["category"] = category
-        return self._call("get_prompts", params) or []
+        try:
+            params = {"lang": lang}
+            if category:
+                params["category"] = category
+            result = self._call("get_prompts", params)
+            if isinstance(result, dict) and result.get("ok") and "data" in result:
+                return result["data"]
+            return []
+        except Exception as e:
+            return []
 
     def get_prompt_by_id(self, prompt_id: str):
         """ID로 특정 프롬프트 조회"""
-        return self._call("get_prompt_by_id", {"prompt_id": prompt_id})
+        try:
+            result = self._call("get_prompt_by_id", {"prompt_id": prompt_id})
+            if isinstance(result, dict) and result.get("ok") and "data" in result:
+                return result["data"]
+            return None
+        except Exception as e:
+            return None
 
     def adjust_difficulty(self, question_id: str, new_difficulty: str, reason: str, adjusted_by: str = "system"):
         self._call("adjust_difficulty", {
@@ -174,14 +210,46 @@ class EdgeDBClient:
         })
 
     def get_problems_for_translation(self, filters: dict | None = None):
-        """번역이 필요한 문제들을 조회 (translation_done = False)"""
-        params = filters or {}
-        params["translation_done"] = False  # 번역이 완료되지 않은 문제만 조회
-        return self._call("get_problems_for_translation", params) or []
+        """번역할 문제들을 조회"""
+        try:
+            params = filters or {}
+            result = self._call("get_problems_for_translation", params)
+            if isinstance(result, dict) and result.get("ok") and "data" in result:
+                return result["data"]
+            return []
+        except Exception as e:
+            return []
 
     def save_i18n_problem(self, problem_data: dict) -> bool:
         """i18n 테이블에 번역된 문제 저장"""
-        return self._call("save_i18n_problem", {"problem_data": problem_data})
+        try:
+            result = self._call("save_i18n_problem", {"problem_data": problem_data})
+            
+            # 응답이 딕셔너리인 경우 상세 정보 출력
+            if isinstance(result, dict):
+                if result.get("ok"):
+                    return True
+                else:
+                    error_msg = result.get('error', 'N/A')
+                    error_code = result.get('error_code', 'N/A')
+                    error_details = result.get('error_details', 'N/A')
+                    error_hint = result.get('error_hint', 'N/A')
+                    
+                    # 상세한 오류 정보를 포함한 예외 발생
+                    detailed_error = f"Edge Function 저장 실패 - {error_msg}"
+                    if error_code != 'N/A':
+                        detailed_error += f" (코드: {error_code})"
+                    if error_details != 'N/A':
+                        detailed_error += f" - 세부사항: {error_details}"
+                    if error_hint != 'N/A':
+                        detailed_error += f" - 힌트: {error_hint}"
+                    
+                    raise RuntimeError(detailed_error)
+            else:
+                return bool(result)
+                
+        except Exception as e:
+            raise RuntimeError(f"Edge Function 호출 실패: {e}")
 
     def get_i18n_problems(self, filters: dict | None = None):
         """i18n 테이블에서 번역된 문제들 조회"""
@@ -197,7 +265,13 @@ class EdgeDBClient:
         return result.get("version", "1970-01-01T00:00:00Z") if result else "1970-01-01T00:00:00Z"
 
     def get_feedback(self, question_id: str = None):
-        return self._call("get_feedback", {"question_id": question_id}) or []
+        try:
+            result = self._call("get_feedback", {"question_id": question_id})
+            if isinstance(result, dict) and result.get("ok") and "data" in result:
+                return result["data"]
+            return []
+        except Exception as e:
+            return []
 
     def count_feedback(self) -> int:
         return int(self._call("count_feedback") or 0)

@@ -2045,30 +2045,22 @@ async function getQuestionsDataVersion(supabaseClient) {
   }
 }
 
-// 번역이 필요한 문제들 조회 (translation_done = false)
+// 번역할 문제들 조회 (subjective 타입만)
 async function getProblemsForTranslation(supabaseClient, filters = {}) {
   try {
-    console.log('Getting problems for translation with filters:', filters);
+    console.log('Getting subjective problems for translation with filters:', filters);
     
-    // translation_done = false인 문제들만 조회
-    const translationFilters = { ...filters, translation_done: false };
-    
-    // 객관식과 주관식 문제를 모두 조회
-    const [multipleChoiceResult, subjectiveResult] = await Promise.all([
-      getMultipleChoiceQuestions(supabaseClient, translationFilters),
-      getSubjectiveQuestions(supabaseClient, translationFilters)
-    ]);
+    // subjective 문제만 조회 (객관식 제외)
+    const subjectiveResult = await getSubjectiveQuestions(supabaseClient, filters);
     
     // 결과 파싱
-    const mcData = multipleChoiceResult.ok ? JSON.parse(await multipleChoiceResult.text()).data : [];
     const subData = subjectiveResult.ok ? JSON.parse(await subjectiveResult.text()).data : [];
     
-    // 모든 문제를 하나의 배열로 합치기
-    const allProblems = [...mcData, ...subData];
+    console.log(`Found ${subData.length} subjective problems for translation`);
     
     return new Response(JSON.stringify({
       ok: true,
-      data: allProblems
+      data: subData
     }), {
       headers: {
         ...corsHeaders,
@@ -2095,7 +2087,11 @@ async function saveI18nProblem(supabaseClient, params) {
   try {
     const { problem_data } = params;
     
+    console.log('🔄 saveI18nProblem 함수 시작');
+    console.log('📥 받은 파라미터:', JSON.stringify(params, null, 2));
+    
     if (!problem_data) {
+      console.log('❌ problem_data가 없습니다');
       return new Response(JSON.stringify({
         ok: false,
         error: "problem_data is required"
@@ -2108,8 +2104,20 @@ async function saveI18nProblem(supabaseClient, params) {
       });
     }
 
-    console.log('Saving i18n problem:', problem_data);
+    console.log('💾 i18n 테이블에 저장할 데이터:');
+    console.log('   - source_problem_id:', problem_data.source_problem_id);
+    console.log('   - lang:', problem_data.lang);
+    console.log('   - category:', problem_data.category);
+    console.log('   - title:', problem_data.title?.substring(0, 50) + '...');
 
+    console.log('🔄 Supabase insert 시작...');
+    console.log('📊 삽입할 데이터 상세 정보:');
+    console.log(JSON.stringify(problem_data, null, 2));
+    
+    // 외래 키 제약 조건이 없으므로 source_problem_id 검증 생략
+    console.log('💾 외래 키 제약 조건 없이 i18n 테이블에 저장 중...');
+    console.log('   - source_problem_id:', problem_data.source_problem_id);
+    
     const { data, error } = await supabaseClient
       .from('qlearn_problems_i18n')
       .insert([problem_data])
@@ -2117,15 +2125,35 @@ async function saveI18nProblem(supabaseClient, params) {
       .single();
 
     if (error) {
-      console.error('Supabase insert error:', error);
-      throw error;
+      console.error('❌ Supabase insert 오류 상세 정보:');
+      console.error('   - 오류 코드:', error.code);
+      console.error('   - 오류 메시지:', error.message);
+      console.error('   - 오류 세부사항:', error.details);
+      console.error('   - 오류 힌트:', error.hint);
+      
+      return new Response(JSON.stringify({
+        ok: false,
+        error: error.message,
+        error_code: error.code,
+        error_details: error.details,
+        error_hint: error.hint,
+        attempted_data: problem_data
+      }), {
+        status: 400,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
     }
 
-    console.log('I18n problem saved successfully:', data.id);
+    console.log('✅ i18n 문제 저장 성공:', data.id);
 
     return new Response(JSON.stringify({
       ok: true,
-      data: data
+      data: data,
+      message: 'i18n 문제 저장 성공',
+      inserted_id: data.id
     }), {
       headers: {
         ...corsHeaders,
@@ -2133,7 +2161,7 @@ async function saveI18nProblem(supabaseClient, params) {
       }
     });
   } catch (error) {
-    console.error('Save i18n problem error:', error);
+    console.error('❌ saveI18nProblem 오류:', error);
     return new Response(JSON.stringify({
       ok: false,
       error: error.message

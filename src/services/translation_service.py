@@ -1,21 +1,17 @@
-"""
-제미나이 번역 서비스
-"""
 import json
-import re
-import streamlit as st
-from typing import Dict, List, Optional
+from typing import Dict, List, Any
 from src.services.gemini_client import GeminiClient
+from src.services.edge_client import EdgeDBClient
 
 class TranslationService:
-    def __init__(self):
-        self.gemini_client = GeminiClient()
-        # 번역용 프롬프트 ID
+    def __init__(self, gemini_client: GeminiClient, edge_client: EdgeDBClient):
+        self.gemini_client = gemini_client
+        self.edge_client = edge_client
         self.TRANSLATION_PROMPT_ID = "335175d3-ea19-4e47-9d47-1edb798a3a72"
-    
+
     def translate_problem(self, problem: Dict) -> Dict:
         """
-        문제 데이터를 영어로 번역
+        문제 데이터를 영어로 번역 (전체 JSON을 한 번에 번역)
         
         Args:
             problem: qlearn_problems 테이블의 문제 데이터
@@ -24,120 +20,113 @@ class TranslationService:
             번역된 문제 데이터
         """
         try:
-            # 번역할 필드들 정의
-            fields_to_translate = [
-                'title', 'scenario', 'task', 'topic_summary'
-            ]
             
-            # JSON 배열 필드들
-            json_array_fields = [
-                'goal', 'first_question', 'requirements', 'constraints', 'evaluation'
-            ]
+            # 전체 문제 데이터를 JSON으로 변환
+            problem_json = json.dumps(problem, ensure_ascii=False, indent=2)
             
-            # JSON 객체 필드들
-            json_object_fields = [
-                'guide', 'reference'
-            ]
+            # 제미나이 API로 전체 JSON 번역
+            system_prompt = self._get_translation_prompt()
+            user_prompt = f"Translate the following Korean problem data to English:\n\n{problem_json}"
             
-            # 번역된 문제 데이터 초기화 (i18n 테이블 구조에 맞게)
-            translated_problem = {
-                'source_problem_id': problem.get('id'),
-                'lang': 'en',
-                'category': problem.get('category', problem.get('domain')),
-                'topic': problem.get('topic', ''),
-                'difficulty': problem.get('difficulty'),
-                'time_limit': problem.get('time_limit', ''),
-                'topic_summary': problem.get('topic_summary', ''),
-                'title': problem.get('title', ''),
-                'scenario': problem.get('scenario', ''),
-                'goal': problem.get('goal', []),
-                'first_question': problem.get('first_question', []),
-                'requirements': problem.get('requirements', []),
-                'constraints': problem.get('constraints', []),
-                'guide': problem.get('guide', {}),
-                'evaluation': problem.get('evaluation', []),
-                'task': problem.get('task', ''),
-                'reference': problem.get('reference', {}),
-                'active': True
-            }
+            translated = self.gemini_client.review_content(system_prompt, user_prompt)
             
-            # time_limit 번역 (숫자만 그대로, 나머지 형식 유지)
-            if 'time_limit' in problem and problem['time_limit']:
-                translated_problem['time_limit'] = self._translate_time_limit(problem['time_limit'])
-            
-            # 일반 텍스트 필드들 번역
-            for field in fields_to_translate:
-                if field in problem and problem[field]:
-                    translated_problem[field] = self._translate_text(problem[field])
-            
-            # JSON 배열 필드들 번역
-            for field in json_array_fields:
-                if field in problem and problem[field]:
-                    if isinstance(problem[field], list):
-                        translated_problem[field] = [
-                            self._translate_text(item) if isinstance(item, str) else item
-                            for item in problem[field]
-                        ]
-                    else:
-                        # JSON 문자열인 경우 파싱 후 번역
-                        try:
-                            data = json.loads(problem[field]) if isinstance(problem[field], str) else problem[field]
-                            if isinstance(data, list):
-                                translated_problem[field] = [
-                                    self._translate_text(item) if isinstance(item, str) else item
-                                    for item in data
-                                ]
-                        except (json.JSONDecodeError, TypeError):
-                            # 파싱 실패 시 원본 유지
-                            translated_problem[field] = problem[field]
-            
-            # JSON 객체 필드들 번역
-            for field in json_object_fields:
-                if field in problem and problem[field]:
-                    if isinstance(problem[field], dict):
-                        translated_problem[field] = self._translate_json_object(problem[field])
-                    else:
-                        # JSON 문자열인 경우 파싱 후 번역
-                        try:
-                            data = json.loads(problem[field]) if isinstance(problem[field], str) else problem[field]
-                            if isinstance(data, dict):
-                                translated_problem[field] = self._translate_json_object(data)
-                        except (json.JSONDecodeError, TypeError):
-                            # 파싱 실패 시 원본 유지
-                            translated_problem[field] = problem[field]
-            
-            # 번역된 문제가 유효한지 확인
-            if not translated_problem or not isinstance(translated_problem, dict):
-                raise RuntimeError("번역된 문제 데이터가 유효하지 않습니다")
-            
-            return translated_problem
-            
-        except Exception as e:
-            print(f"❌ 문제 번역 실패: {str(e)}")
-            raise RuntimeError(f"문제 번역 실패: {str(e)}")
-    
-    def _get_translation_prompt(self) -> str:
-        """데이터베이스에서 번역용 프롬프트를 가져옵니다."""
-        try:
-            # streamlit이 실행 중인지 확인
-            import streamlit as st
-            if not hasattr(st, 'session_state'):
-                return self._get_default_translation_prompt()
-            
-            db = st.session_state.get("db")
-            if not db:
-                print("❌ 데이터베이스 연결이 없습니다. 기본 프롬프트를 사용합니다.")
-                return self._get_default_translation_prompt()
-            
-            prompt = db.get_prompt_by_id(self.TRANSLATION_PROMPT_ID)
-            if prompt:
-                print(f"✅ 번역용 프롬프트 사용: {self.TRANSLATION_PROMPT_ID}")
-                return prompt
+            if translated and isinstance(translated, str):
+                result = translated.strip()
+                
+                # JSON 형태의 응답인 경우 파싱 시도
+                if '```json' in result:
+                    try:
+                        # ```json과 ``` 사이의 내용 추출
+                        start_idx = result.find('```json') + 7
+                        end_idx = result.find('```', start_idx)
+                        if end_idx == -1:
+                            json_content = result[start_idx:].strip()
+                        else:
+                            json_content = result[start_idx:end_idx].strip()
+                        
+                        
+                        # JSON 파싱 시도
+                        parsed = json.loads(json_content)
+                        
+                        # 번역된 데이터를 i18n 형식으로 변환
+                        # subjective 타입으로 고정 (questions_subjective 테이블에서만 가져옴)
+                        source_id = problem.get('id')
+                        
+                        translated_problem = {
+                            'source_problem_id': source_id,
+                            'lang': 'en',
+                            'category': parsed.get('category', problem.get('category', problem.get('domain'))),
+                            'topic': parsed.get('topic', problem.get('topic', '')),
+                            'difficulty': parsed.get('difficulty', problem.get('difficulty')),
+                            'time_limit': parsed.get('time_limit', problem.get('time_limit', '')),
+                            'topic_summary': parsed.get('topic_summary', ''),
+                            'title': parsed.get('title', ''),
+                            'scenario': parsed.get('scenario', ''),
+                            'goal': parsed.get('goal', []),
+                            'first_question': parsed.get('first_question', []),
+                            'requirements': parsed.get('requirements', []),
+                            'constraints': parsed.get('constraints', []),
+                            'guide': parsed.get('guide', {}),
+                            'evaluation': parsed.get('evaluation', []),
+                            'task': parsed.get('task', ''),
+                            'reference': parsed.get('reference', {}),
+                            'active': True
+                        }
+                        
+                        return translated_problem
+                        
+                    except json.JSONDecodeError as e:
+                        return self._create_fallback_translation(problem)
+                else:
+                    return self._create_fallback_translation(problem)
             else:
-                print(f"❌ 번역용 프롬프트를 찾을 수 없습니다 (ID: {self.TRANSLATION_PROMPT_ID}). 기본 프롬프트를 사용합니다.")
-                return self._get_default_translation_prompt()
+                return self._create_fallback_translation(problem)
+                
         except Exception as e:
-            print(f"❌ 번역용 프롬프트 조회 실패: {e}. 기본 프롬프트를 사용합니다.")
+            return self._create_fallback_translation(problem)
+    
+    def _create_fallback_translation(self, problem: dict) -> dict:
+        """번역 실패 시 원본 데이터를 사용한 폴백 번역"""
+        # subjective 타입으로 고정 (questions_subjective 테이블에서만 가져옴)
+        
+        return {
+            'source_problem_id': problem.get('id'),
+            'lang': 'en',
+            'category': problem.get('category', problem.get('domain')),
+            'topic': problem.get('topic', ''),
+            'difficulty': problem.get('difficulty'),
+            'time_limit': problem.get('time_limit', ''),
+            'topic_summary': problem.get('topic_summary', ''),
+            'title': problem.get('title', ''),
+            'scenario': problem.get('scenario', ''),
+            'goal': problem.get('goal', []),
+            'first_question': problem.get('first_question', []),
+            'requirements': problem.get('requirements', []),
+            'constraints': problem.get('constraints', []),
+            'guide': problem.get('guide', {}),
+            'evaluation': problem.get('evaluation', []),
+            'task': problem.get('task', ''),
+            'reference': problem.get('reference', {}),
+            'active': True
+        }
+
+    def _get_translation_prompt(self) -> str:
+        """번역용 프롬프트를 데이터베이스에서 조회"""
+        try:
+            prompt = self.edge_client.get_prompt_by_id(self.TRANSLATION_PROMPT_ID)
+            
+            # 응답이 문자열인 경우 (직접 프롬프트 텍스트)
+            if prompt and isinstance(prompt, str):
+                return prompt
+            
+            # 응답이 딕셔너리인 경우
+            if prompt and isinstance(prompt, dict):
+                prompt_text = prompt.get('prompt_text', '')
+                if prompt_text:
+                    return prompt_text
+            
+            return self._get_default_translation_prompt()
+        except Exception as e:
             return self._get_default_translation_prompt()
     
     def _get_default_translation_prompt(self) -> str:
@@ -151,161 +140,87 @@ Translate the following Korean text to English while maintaining:
 
 Return only the translated text without any additional explanations or comments."""
 
-    def _translate_text(self, text: str) -> str:
-        """텍스트를 영어로 번역"""
-        if not text or not text.strip():
-            return text or ""
-        
-        system_prompt = self._get_translation_prompt()
-        user_prompt = f"Translate this Korean text to English:\n\n{text}"
-        
-        try:
-            translated = self.gemini_client.review_content(system_prompt, user_prompt)
-            if translated and isinstance(translated, str):
-                return translated.strip()
-            else:
-                print(f"번역 결과가 유효하지 않음: {translated}")
-                return text  # 번역 실패 시 원본 반환
-        except Exception as e:
-            print(f"번역 실패: {e}")
-            return text  # 번역 실패 시 원본 반환
-    
-    def _translate_time_limit(self, time_limit: str) -> str:
-        """시간 제한 텍스트 번역 (숫자만 그대로, 나머지 형식 유지)"""
-        if not time_limit:
-            return time_limit or ""
-        
-        # 숫자 추출
-        numbers = re.findall(r'\d+', time_limit)
-        
-        if not numbers:
-            return time_limit
-        
-        # "분 이내" 패턴을 "minutes"로 번역
-        if "분 이내" in time_limit:
-            return f"within {numbers[0]} minutes"
-        elif "분" in time_limit:
-            return f"{numbers[0]} minutes"
-        else:
-            # 다른 패턴의 경우 전체 번역
-            return self._translate_text(time_limit)
-    
-    def _translate_json_object(self, obj: Dict) -> Dict:
-        """JSON 객체의 모든 문자열 값들을 번역"""
-        if not isinstance(obj, dict):
-            return obj or {}
-        
-        translated_obj = {}
-        for key, value in obj.items():
-            if isinstance(value, str):
-                translated_obj[key] = self._translate_text(value)
-            elif isinstance(value, dict):
-                translated_obj[key] = self._translate_json_object(value)
-            elif isinstance(value, list):
-                translated_obj[key] = [
-                    self._translate_text(item) if isinstance(item, str) else item
-                    for item in value
-                ]
-            else:
-                translated_obj[key] = value
-        
-        return translated_obj
-    
-    def batch_translate_problems(self, problems: List[Dict]) -> List[Dict]:
-        """여러 문제를 일괄 번역"""
-        translated_problems = []
-        
-        for i, problem in enumerate(problems):
-            try:
-                print(f"번역 진행 중: {i+1}/{len(problems)} - {problem.get('title', 'Unknown')[:50]}...")
-                translated = self.translate_problem(problem)
-                translated_problems.append(translated)
-            except Exception as e:
-                print(f"문제 {i+1} 번역 실패: {e}")
-                # 번역 실패한 문제는 원본 유지하되 is_en을 True로 설정
-                failed_problem = problem.copy()
-                failed_problem['is_en'] = True
-                translated_problems.append(failed_problem)
-        
-        return translated_problems
-    
-    def save_translated_problem(self, translated_problem: Dict) -> bool:
+    def save_translated_problem(self, translated_problem: dict) -> bool:
         """번역된 문제를 i18n 테이블에 저장"""
         try:
-            db = st.session_state.get("db")
-            if not db:
-                print("❌ 데이터베이스 연결이 없습니다.")
-                return False
+            # 필수 필드 존재 여부 확인
+            required_fields = ['source_problem_id', 'lang', 'category', 'topic', 'difficulty', 
+                             'time_limit', 'topic_summary', 'title', 'scenario', 'task', 'active']
+            missing_fields = [field for field in required_fields if field not in translated_problem]
             
-            # i18n 테이블에 저장
-            success = db.save_i18n_problem(translated_problem)
+            if missing_fields:
+                error_msg = f"필수 필드 누락: {missing_fields}"
+                raise ValueError(error_msg)
             
-            if success:
-                print(f"✅ 번역된 문제 저장 완료: {translated_problem.get('source_problem_id')}")
-            else:
-                print(f"❌ 번역된 문제 저장 실패: {translated_problem.get('source_problem_id')}")
-            
-            return success
-            
-        except Exception as e:
-            print(f"❌ 번역된 문제 저장 중 오류 발생: {e}")
-            return False
-
-    def update_translation_status(self, question_id: str, question_type: str) -> bool:
-        """번역 완료 후 question_status 테이블의 translation_done을 True로 업데이트"""
-        try:
-            db = st.session_state.get("db")
-            if not db:
-                print("❌ 데이터베이스 연결이 없습니다.")
-                return False
-            
-            # question_status 테이블 업데이트
-            success = db.update_question_status(question_id, {
-                "translation_done": True
-            })
+            # Edge Function을 통해 저장
+            success = self.edge_client.save_i18n_problem(translated_problem)
             
             if success:
-                print(f"✅ 번역 상태 업데이트 완료: {question_id}")
+                return True
             else:
-                print(f"❌ 번역 상태 업데이트 실패: {question_id}")
-            
-            return success
-            
+                error_msg = f"Edge Function에서 저장 실패 응답: {translated_problem.get('source_problem_id')}"
+                raise RuntimeError(error_msg)
+                
         except Exception as e:
-            print(f"❌ 번역 상태 업데이트 중 오류 발생: {e}")
-            return False
+            error_msg = f"저장 중 오류 발생: {str(e)}"
+            raise RuntimeError(error_msg)
 
-    def translate_and_save_problem(self, problem: Dict) -> Dict:
-        """문제를 번역하고 i18n 테이블에 저장한 후 상태를 업데이트"""
+    def translate_and_save_problem(self, problem: dict, debug_callback=None) -> dict:
+        """문제를 번역하고 저장하는 전체 프로세스"""
+        debug_info = {
+            "steps": [],
+            "errors": [],
+            "success": False,
+            "translated_problem": None
+        }
+        
+        def update_debug(step, error=None):
+            if step:
+                debug_info["steps"].append(step)
+            if error:
+                debug_info["errors"].append(error)
+            if debug_callback:
+                debug_callback(debug_info)
+        
         try:
-            if not problem:
-                raise RuntimeError("번역할 문제 데이터가 없습니다")
+            step_info = f"🔄 번역 시작: {problem.get('title', 'Unknown')[:50]}..."
+            update_debug(step_info)
             
-            # 1. 문제 번역
+            # 1단계: 문제 번역
+            step_info = "📝 1단계: 문제 번역 중..."
+            update_debug(step_info)
+            
             translated_problem = self.translate_problem(problem)
             
             if not translated_problem:
+                update_debug(None, "문제 번역 실패")
                 raise RuntimeError("문제 번역 실패")
             
-            # 2. i18n 테이블에 저장
+            step_info = "✅ 1단계 완료: 문제 번역 성공"
+            update_debug(step_info)
+            
+            # 2단계: i18n 테이블에 저장
+            step_info = "💾 2단계: i18n 테이블 저장 중..."
+            update_debug(step_info)
+            
             save_success = self.save_translated_problem(translated_problem)
             
             if not save_success:
+                update_debug(None, "번역된 문제 저장 실패")
                 raise RuntimeError("번역된 문제 저장 실패")
             
-            # 3. 번역 상태 업데이트
-            question_type = "subjective" if "topic" in problem else "multiple_choice"
-            status_success = self.update_translation_status(problem.get('id'), question_type)
+            step_info = "✅ 2단계 완료: i18n 테이블 저장 성공"
+            update_debug(step_info)
             
-            if not status_success:
-                print(f"⚠️ 번역 상태 업데이트 실패: {problem.get('id')}")
+            success_msg = f"🎉 번역 완료: {problem.get('title', 'Unknown')[:50]}..."
+            update_debug(success_msg)
+            
+            debug_info["success"] = True
+            debug_info["translated_problem"] = translated_problem
             
             return translated_problem
             
         except Exception as e:
-            print(f"❌ 번역 및 저장 실패: {str(e)}")
+            error_msg = f"❌ 번역 및 저장 실패: {str(e)}"
+            update_debug(None, error_msg)
             raise RuntimeError(f"문제 번역 및 저장 실패: {str(e)}")
-
-    def is_available(self) -> bool:
-        """번역 서비스 사용 가능 여부 확인"""
-        return self.gemini_client.is_available()

@@ -41,10 +41,8 @@ def render(st):
     
     # 번역 서비스 초기화
     try:
-        translation_service = TranslationService()
-        if not translation_service.is_available():
-            st.error("❌ 번역 서비스가 사용할 수 없습니다")
-            return
+        gemini_client = GeminiClient()
+        translation_service = TranslationService(gemini_client, st.session_state.db)
     except Exception as e:
         st.error(f"❌ 번역 서비스 초기화 실패: {str(e)}")
         return
@@ -82,8 +80,9 @@ def render(st):
             disabled=True
         )
     
-    # 검색 버튼
-    if st.button("🔍 문제 검색", key="search_problems_for_auto_translation"):
+    # 검색 버튼 (Subjective 타입만)
+    st.info("💡 현재는 주관식 문제(Subjective)만 번역 가능합니다. 객관식 문제 번역은 추후 지원 예정입니다.")
+    if st.button("🔍 문제 검색 (Subjective만)", key="search_problems_for_auto_translation"):
         filters = {}
         
         if selected_domain != "전체":
@@ -170,7 +169,7 @@ def render(st):
             
             with col2:
                 st.markdown(
-                    f"**{i+1}. [{problem.get('domain', 'N/A')}] {problem.get('title', 'No Title')[:70]}...** "
+                    f"**{i+1}. [{problem.get('category', problem.get('domain', 'N/A'))}] {problem.get('title', 'No Title')[:70]}...** "
                     f"({problem.get('difficulty', 'N/A')})"
                 )
         
@@ -206,21 +205,37 @@ def render(st):
                     )
                     
                     # 문제 번역 및 저장 (i18n 테이블에 저장하고 상태 업데이트)
-                    translated_problem = translation_service.translate_and_save_problem(problem)
-                    
-                    if translated_problem:
-                        # 성공 결과 저장
-                        st.session_state.auto_translation_results.append({
-                            "problem_id": problem.get("id"),
-                            "title": problem.get("title"),
-                            "status": "success"
-                        })
-                    else:
-                        # 번역 실패
+                    try:
+                        # 디버깅 콜백 함수 정의
+                        def debug_callback(debug_info):
+                            # 현재 문제의 디버깅 정보를 상태에 저장
+                            if "auto_translation_debug" not in st.session_state:
+                                st.session_state.auto_translation_debug = {}
+                            st.session_state.auto_translation_debug[problem.get("id")] = debug_info
+                        
+                        translated_problem = translation_service.translate_and_save_problem(problem, debug_callback)
+                        
+                        if translated_problem:
+                            # 성공 결과 저장
+                            st.session_state.auto_translation_results.append({
+                                "problem_id": problem.get("id"),
+                                "title": problem.get("title"),
+                                "translated_title": translated_problem.get("title", ""),
+                                "status": "success"
+                            })
+                        else:
+                            # 번역 실패
+                            st.session_state.auto_translation_errors.append({
+                                "problem_id": problem.get("id"),
+                                "title": problem.get("title"),
+                                "error": "번역 결과가 유효하지 않음"
+                            })
+                    except Exception as e:
+                        # 번역 중 예외 발생
                         st.session_state.auto_translation_errors.append({
                             "problem_id": problem.get("id"),
                             "title": problem.get("title"),
-                            "error": "번역 결과가 없습니다"
+                            "error": f"번역 중 오류: {str(e)}"
                         })
                     
                     # API 호출 제한을 위한 대기
@@ -262,6 +277,19 @@ def render(st):
                         for error in st.session_state.auto_translation_errors:
                             st.markdown(f"- {error['title'][:70]}...")
                             st.caption(f"  오류: {error['error']}")
+                            
+                            # 디버깅 정보 표시
+                            if "auto_translation_debug" in st.session_state and error['problem_id'] in st.session_state.auto_translation_debug:
+                                debug_info = st.session_state.auto_translation_debug[error['problem_id']]
+                                with st.expander(f"🔍 {error['title'][:30]}... 디버깅 정보", expanded=False):
+                                    if debug_info.get("steps"):
+                                        st.write("**진행 단계:**")
+                                        for step in debug_info["steps"]:
+                                            st.write(f"• {step}")
+                                    if debug_info.get("errors"):
+                                        st.write("**오류:**")
+                                        for err in debug_info["errors"]:
+                                            st.error(f"• {err}")
                 
                 # 초기화 버튼
                 if st.button("🔄 새로운 번역 시작", key="reset_auto_translation"):
@@ -269,6 +297,8 @@ def render(st):
                     st.session_state.auto_translation_results = []
                     st.session_state.auto_translation_errors = []
                     st.session_state.auto_translation_current = 0
+                    if "auto_translation_debug" in st.session_state:
+                        del st.session_state.auto_translation_debug
                     st.rerun()
         
         else:

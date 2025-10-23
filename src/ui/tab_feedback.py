@@ -6,13 +6,22 @@ import openai
 import json
 
 def render(st):
+    
     # DB 연결 체크
     if st.session_state.db is None:
         st.error("데이터베이스 연결이 초기화되지 않았습니다. Edge Function 설정을 확인하세요.")
         return
     
     # 문제 선택 (통합된 인터페이스)
-    all_q = st.session_state.db.get_questions()
+    try:
+        all_q = st.session_state.db.get_questions()
+    except Exception as e:
+        all_q = []
+    
+    # all_q가 리스트가 아닌 경우 빈 리스트로 초기화
+    if not isinstance(all_q, list):
+        all_q = []
+    
     if not all_q:
         st.info("문제가 없습니다. 먼저 문제를 생성해주세요.")
         return
@@ -20,8 +29,15 @@ def render(st):
     # 문제 선택 옵션을 question_text로 표시
     question_options = {}
     for question in all_q:
-        qt = question.get("question") or question.get("question_text","(없음)")
-        display_text = f"{qt[:60]}{'...' if len(qt) > 60 else ''} [{question['id'][:8]}...]"
+        # question이 딕셔너리인지 확인
+        if not isinstance(question, dict):
+            continue
+            
+        qt = question.get("question") if isinstance(question, dict) else "(없음)"
+        if not qt:
+            qt = question.get("question_text", "(없음)") if isinstance(question, dict) else "(없음)"
+        question_id = question.get("id", "unknown") if isinstance(question, dict) else "unknown"
+        display_text = f"{qt[:60]}{'...' if len(qt) > 60 else ''} [{question_id[:8]}...]"
         question_options[display_text] = question
     
     # 문제 선택과 AI 검토 버튼을 같은 라인에 배치
@@ -41,12 +57,23 @@ def render(st):
     
     if selected_display:
         selected_question = question_options[selected_display]
-        selected_id = selected_question["id"]
+        
+        # selected_question이 딕셔너리인지 확인
+        if not isinstance(selected_question, dict):
+            st.error(f"선택된 문제 데이터가 유효하지 않습니다: {type(selected_question)}")
+            return
+            
+        selected_id = selected_question.get("id", "unknown") if isinstance(selected_question, dict) else "unknown"
         
         # 선택된 문제 정보 표시
-        qt = selected_question.get("question") or selected_question.get("question_text","(없음)")
+        qt = selected_question.get("question") if isinstance(selected_question, dict) else "(없음)"
+        if not qt:
+            qt = selected_question.get("question_text", "(없음)") if isinstance(selected_question, dict) else "(없음)"
         st.markdown(f"**선택된 문제**: {qt}")
-        st.caption(f"문제 ID: {selected_id} | 영역: {selected_question.get('area', 'N/A')} | 난이도: {selected_question.get('difficulty', 'N/A')}")
+        
+        area = selected_question.get('area', 'N/A') if isinstance(selected_question, dict) else 'N/A'
+        difficulty = selected_question.get('difficulty', 'N/A') if isinstance(selected_question, dict) else 'N/A'
+        st.caption(f"문제 ID: {selected_id} | 영역: {area} | 난이도: {difficulty}")
         
         # 좌우 분할: 피드백 입력 vs 기존 피드백 조회
         col1, col2 = st.columns([1, 1])
@@ -76,17 +103,79 @@ def render(st):
                 
                 submitted = st.form_submit_button("💾 피드백 저장", type="primary")
                 
+                # 변수 정의 확인
+                try:
+                    local_vars = locals()
+                    
+                    # local_vars가 딕셔너리인지 확인
+                    if isinstance(local_vars, dict):
+                        pass
+                    else:
+                        # 기본값으로 변수들 초기화
+                        d = 3
+                        r = 3
+                        c = 3
+                        actual = "medium"
+                        comments = ""
+                        selected_id = "unknown"
+                        
+                except Exception as e:
+                    # 기본값으로 변수들 초기화
+                    d = 3
+                    r = 3
+                    c = 3
+                    actual = "medium"
+                    comments = ""
+                    selected_id = "unknown"
+                
                 if submitted:
                     if comments.strip():  # 텍스트 입력이 있는 경우에만 저장
-                        ok = st.session_state.db.save_feedback({
+                        try:
+                            # 변수 타입 확인 및 안전한 변환
+                            try:
+                                d = d
+                            except Exception as e:
+                                d = 3  # 기본값 설정
                             
-                            "question_id": selected_id, 
-                            "difficulty_rating": d,
-                            "relevance_rating": r, 
-                            "clarity_rating": c,
-                            "actual_difficulty": actual, 
-                            "comments": comments
-                        })
+                            try:
+                                r = r
+                            except Exception as e:
+                                r = 3  # 기본값 설정
+                            
+                            try:
+                                c = c
+                            except Exception as e:
+                                c = 3  # 기본값 설정
+                            
+                            try:
+                                actual = actual
+                            except Exception as e:
+                                actual = "medium"  # 기본값 설정
+                            
+                            try:
+                                selected_id = selected_id
+                            except Exception as e:
+                                selected_id = "unknown"  # 기본값 설정
+                            
+                            # 안전한 타입 변환
+                            difficulty_rating = int(d) if isinstance(d, (int, str)) and str(d).isdigit() else 3
+                            relevance_rating = int(r) if isinstance(r, (int, str)) and str(r).isdigit() else 3
+                            clarity_rating = int(c) if isinstance(c, (int, str)) and str(c).isdigit() else 3
+                            actual_difficulty = str(actual) if actual else "medium"
+                            question_id = str(selected_id) if selected_id else "unknown"
+                            
+                            feedback_data = {
+                                "question_id": question_id, 
+                                "difficulty_rating": difficulty_rating,
+                                "relevance_rating": relevance_rating, 
+                                "clarity_rating": clarity_rating,
+                                "actual_difficulty": actual_difficulty, 
+                                "comments": str(comments)
+                            }
+                            ok = st.session_state.db.save_feedback(feedback_data)
+                        except Exception as e:
+                            st.error(f"피드백 저장 중 오류가 발생했습니다: {str(e)}")
+                            ok = False
                         if ok:
                             st.success("✅ 피드백이 성공적으로 저장되었습니다!")
                             st.rerun()  # 페이지 새로고침하여 새 피드백 표시
@@ -99,12 +188,23 @@ def render(st):
             st.subheader("📊 기존 피드백 조회")
             
             # 선택된 문제의 피드백 조회
-            feedbacks = st.session_state.db.get_feedback(selected_id)
+            try:
+                feedbacks = st.session_state.db.get_feedback(selected_id)
+            except Exception as e:
+                feedbacks = []
+            
+            # feedbacks가 리스트인지 확인
+            if not isinstance(feedbacks, list):
+                feedbacks = []
             
             if feedbacks:
                 st.markdown(f"**📋 총 {len(feedbacks)}개의 피드백**")
                 
                 for idx, feedback in enumerate(feedbacks, 1):
+                    # feedback이 딕셔너리인지 확인
+                    if not isinstance(feedback, dict):
+                        continue
+                        
                     with st.expander(f"피드백 #{idx} - {feedback.get('created_at', '날짜 미상')}"):
                         col_f1, col_f2, col_f3 = st.columns(3)
                         with col_f1:
@@ -199,11 +299,8 @@ def perform_ai_review(question):
             if not system_prompt:
                 # DB에서 가져오지 못한 경우 기본 프롬프트 사용
                 system_prompt = DEFAULT_AI_REVIEW_PROMPT
-                print("기본 AI 검토 프롬프트 사용")
-            else:
-                print("데이터베이스에서 피드백용 AI 검토 프롬프트 사용")
         except Exception as e:
-            print(f"프롬프트 조회 실패: {e}")
+            # 오류 발생 시 기본 프롬프트 사용
             system_prompt = DEFAULT_AI_REVIEW_PROMPT
         
         user_prompt = f"다음 문제를 검토해주세요:\n\n{problem_content}"
