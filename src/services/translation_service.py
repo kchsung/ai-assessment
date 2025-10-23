@@ -39,7 +39,7 @@ class TranslationService:
             # 번역된 문제 데이터 초기화
             translated_problem = problem.copy()
             translated_problem['lang'] = 'en'
-            # is_en 필드가 제거되어 설정 불필요
+            translated_problem['is_en'] = True
             
             # time_limit 번역 (숫자만 그대로, 나머지 형식 유지)
             if 'time_limit' in problem and problem['time_limit']:
@@ -166,8 +166,9 @@ Return only the translated text without any additional explanations or comments.
                 translated_problems.append(translated)
             except Exception as e:
                 print(f"문제 {i+1} 번역 실패: {e}")
-                # 번역 실패한 문제는 원본 유지
+                # 번역 실패한 문제는 원본 유지하되 is_en을 True로 설정
                 failed_problem = problem.copy()
+                failed_problem['is_en'] = True
                 translated_problems.append(failed_problem)
         
         return translated_problems
