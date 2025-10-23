@@ -107,6 +107,13 @@ serve(async (req) => {
         return await getMultipleChoiceQuestionById(supabaseClient, params);
       case 'get_questions_data_version':
         return await getQuestionsDataVersion(supabaseClient);
+      // 번역 관련 액션들
+      case 'get_problems_for_translation':
+        return await getProblemsForTranslation(supabaseClient, params);
+      case 'save_i18n_problem':
+        return await saveI18nProblem(supabaseClient, params);
+      case 'get_i18n_problems':
+        return await getI18nProblems(supabaseClient, params);
       // qlearn_problems_multiple 테이블 관련 액션들
       case 'save_qlearn_problem_multiple':
         return await saveQlearnProblemMultiple(supabaseClient, params);
@@ -2025,6 +2032,155 @@ async function getQuestionsDataVersion(supabaseClient) {
     });
   } catch (error) {
     console.error('Get questions data version error:', error);
+    return new Response(JSON.stringify({
+      ok: false,
+      error: error.message
+    }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    });
+  }
+}
+
+// 번역이 필요한 문제들 조회 (translation_done = false)
+async function getProblemsForTranslation(supabaseClient, filters = {}) {
+  try {
+    console.log('Getting problems for translation with filters:', filters);
+    
+    // translation_done = false인 문제들만 조회
+    const translationFilters = { ...filters, translation_done: false };
+    
+    // 객관식과 주관식 문제를 모두 조회
+    const [multipleChoiceResult, subjectiveResult] = await Promise.all([
+      getMultipleChoiceQuestions(supabaseClient, translationFilters),
+      getSubjectiveQuestions(supabaseClient, translationFilters)
+    ]);
+    
+    // 결과 파싱
+    const mcData = multipleChoiceResult.ok ? JSON.parse(await multipleChoiceResult.text()).data : [];
+    const subData = subjectiveResult.ok ? JSON.parse(await subjectiveResult.text()).data : [];
+    
+    // 모든 문제를 하나의 배열로 합치기
+    const allProblems = [...mcData, ...subData];
+    
+    return new Response(JSON.stringify({
+      ok: true,
+      data: allProblems
+    }), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    });
+  } catch (error) {
+    console.error('Get problems for translation error:', error);
+    return new Response(JSON.stringify({
+      ok: false,
+      error: error.message
+    }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    });
+  }
+}
+
+// i18n 문제 저장
+async function saveI18nProblem(supabaseClient, params) {
+  try {
+    const { problem_data } = params;
+    
+    if (!problem_data) {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: "problem_data is required"
+      }), {
+        status: 400,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    console.log('Saving i18n problem:', problem_data);
+
+    const { data, error } = await supabaseClient
+      .from('qlearn_problems_i18n')
+      .insert([problem_data])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase insert error:', error);
+      throw error;
+    }
+
+    console.log('I18n problem saved successfully:', data.id);
+
+    return new Response(JSON.stringify({
+      ok: true,
+      data: data
+    }), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    });
+  } catch (error) {
+    console.error('Save i18n problem error:', error);
+    return new Response(JSON.stringify({
+      ok: false,
+      error: error.message
+    }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    });
+  }
+}
+
+// i18n 문제 조회
+async function getI18nProblems(supabaseClient, filters = {}) {
+  try {
+    console.log('Getting i18n problems with filters:', filters);
+    
+    let query = supabaseClient.from('qlearn_problems_i18n').select('*');
+    
+    // 필터 적용
+    if (filters.source_problem_id) query = query.eq('source_problem_id', filters.source_problem_id);
+    if (filters.lang) query = query.eq('lang', filters.lang);
+    if (filters.category) query = query.eq('category', filters.category);
+    if (filters.difficulty) query = query.eq('difficulty', filters.difficulty);
+    if (filters.active !== undefined) query = query.eq('active', filters.active);
+
+    const { data, error } = await query.order('created_at', {
+      ascending: false
+    });
+
+    if (error) {
+      console.error('Supabase select error:', error);
+      throw error;
+    }
+
+    return new Response(JSON.stringify({
+      ok: true,
+      data: data || []
+    }), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    });
+  } catch (error) {
+    console.error('Get i18n problems error:', error);
     return new Response(JSON.stringify({
       ok: false,
       error: error.message

@@ -35,6 +35,9 @@ def render(st):
     # 번역 서비스 초기화
     try:
         translation_service = TranslationService()
+        if not translation_service.is_available():
+            st.error("❌ 번역 서비스가 사용할 수 없습니다")
+            return
     except Exception as e:
         st.error(f"❌ 번역 서비스 초기화 실패: {str(e)}")
         return
@@ -85,9 +88,10 @@ def render(st):
         # is_en 필터 제거됨 (필드 삭제로 인해)
         
         try:
-            problems = db.get_qlearn_problems(filters)
+            # translation_done = False인 문제들만 조회
+            problems = db.get_problems_for_translation(filters)
             st.session_state.manual_translation_problems = problems
-            st.success(f"✅ {len(problems)}개의 문제를 찾았습니다")
+            st.success(f"✅ {len(problems)}개의 번역이 필요한 문제를 찾았습니다")
         except Exception as e:
             st.error(f"❌ 문제 검색 실패: {str(e)}")
     
@@ -164,58 +168,62 @@ def render(st):
             if st.button("🌐 번역 시작", key="start_manual_translation", type="primary"):
                 with st.spinner("번역 중... 잠시만 기다려주세요 ⏳"):
                     try:
-                        # 문제 번역
-                        translated_problem = translation_service.translate_problem(selected_problem)
+                        # 문제 번역 및 저장 (i18n 테이블에 저장하고 상태 업데이트)
+                        translated_problem = translation_service.translate_and_save_problem(selected_problem)
                         
-                        # 원본 문제 ID 추가
-                        translated_problem["original_problem_id"] = selected_problem.get("id")
+                        if translated_problem and isinstance(translated_problem, dict):
+                            # 세션 상태에 번역 결과 저장
+                            st.session_state.manual_translation_result = translated_problem
+                            st.success("✅ 번역이 완료되었습니다!")
+                        else:
+                            st.error("❌ 번역 결과가 유효하지 않습니다.")
+                            # 실패 시 결과 초기화
+                            if "manual_translation_result" in st.session_state:
+                                del st.session_state.manual_translation_result
                         
-                        # 번역된 문제를 qlearn_problems_en 테이블에 저장
-                        db.save_qlearn_problem_en(translated_problem)
-                        
-                        # is_en 필드가 제거되어 상태 업데이트 불필요
-                        
-                        # 세션 상태에 번역 결과 저장
-                        st.session_state.manual_translation_result = translated_problem
-                        
-                        st.success("✅ 번역이 완료되었습니다!")
                         st.rerun()
                         
                     except Exception as e:
                         st.error(f"❌ 번역 실패: {str(e)}")
+                        # 실패 시 결과 초기화
+                        if "manual_translation_result" in st.session_state:
+                            del st.session_state.manual_translation_result
             
             # 번역 결과 표시
-            if "manual_translation_result" in st.session_state:
+            if "manual_translation_result" in st.session_state and st.session_state.manual_translation_result:
                 st.markdown("---")
                 st.subheader("✨ 번역 결과")
                 
                 translated = st.session_state.manual_translation_result
                 
-                with st.expander("🔍 번역된 문제 내용 보기", expanded=True):
-                    st.markdown("**Title:**")
-                    st.write(translated.get("title", ""))
-                    
-                    st.markdown("**Scenario:**")
-                    st.write(translated.get("scenario", ""))
-                    
-                    st.markdown("**Time Limit:**")
-                    st.write(translated.get("time_limit", ""))
-                    
-                    st.markdown("**Goals:**")
-                    goals = translated.get("goal", [])
-                    if isinstance(goals, list):
-                        for i, goal in enumerate(goals, 1):
-                            st.write(f"{i}. {goal}")
-                    else:
-                        st.write(goals)
-                    
-                    st.markdown("**Requirements:**")
-                    requirements = translated.get("requirements", [])
-                    if isinstance(requirements, list):
-                        for i, req in enumerate(requirements, 1):
-                            st.write(f"{i}. {req}")
-                    else:
-                        st.write(requirements)
+                if translated is None:
+                    st.error("❌ 번역 결과가 없습니다.")
+                else:
+                    with st.expander("🔍 번역된 문제 내용 보기", expanded=True):
+                        st.markdown("**Title:**")
+                        st.write(translated.get("title", ""))
+                        
+                        st.markdown("**Scenario:**")
+                        st.write(translated.get("scenario", ""))
+                        
+                        st.markdown("**Time Limit:**")
+                        st.write(translated.get("time_limit", ""))
+                        
+                        st.markdown("**Goals:**")
+                        goals = translated.get("goal", [])
+                        if isinstance(goals, list):
+                            for i, goal in enumerate(goals, 1):
+                                st.write(f"{i}. {goal}")
+                        else:
+                            st.write(goals)
+                        
+                        st.markdown("**Requirements:**")
+                        requirements = translated.get("requirements", [])
+                        if isinstance(requirements, list):
+                            for i, req in enumerate(requirements, 1):
+                                st.write(f"{i}. {req}")
+                        else:
+                            st.write(requirements)
                 
                 # 초기화 버튼
                 if st.button("🔄 새로운 문제 번역하기", key="reset_manual_translation"):

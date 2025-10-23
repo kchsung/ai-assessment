@@ -42,6 +42,9 @@ def render(st):
     # 번역 서비스 초기화
     try:
         translation_service = TranslationService()
+        if not translation_service.is_available():
+            st.error("❌ 번역 서비스가 사용할 수 없습니다")
+            return
     except Exception as e:
         st.error(f"❌ 번역 서비스 초기화 실패: {str(e)}")
         return
@@ -92,10 +95,11 @@ def render(st):
         # is_en 필터 제거됨 (필드 삭제로 인해)
         
         try:
-            problems = db.get_qlearn_problems(filters)
+            # translation_done = False인 문제들만 조회
+            problems = db.get_problems_for_translation(filters)
             st.session_state.auto_translation_problems = problems
             st.session_state.auto_translation_selected = []
-            st.success(f"✅ {len(problems)}개의 문제를 찾았습니다")
+            st.success(f"✅ {len(problems)}개의 번역이 필요한 문제를 찾았습니다")
         except Exception as e:
             st.error(f"❌ 문제 검색 실패: {str(e)}")
     
@@ -119,11 +123,12 @@ def render(st):
                 st.session_state.auto_translation_selected = []
                 st.rerun()
         
-        st.markdown(f"**선택된 문제: {len(st.session_state.get('auto_translation_selected', []))}개**")
+        # 선택된 문제 수 표시
+        selected_count = len(st.session_state.get('auto_translation_selected', []))
+        st.markdown(f"**선택된 문제: {selected_count}개**")
         
         # 번역 시작 버튼 (상단으로 이동)
-        if st.session_state.auto_translation_selected:
-            selected_count = len(st.session_state.auto_translation_selected)
+        if selected_count > 0:
             st.info(f"📌 {selected_count}개의 문제가 선택되었습니다")
             
             if not st.session_state.auto_translation_running:
@@ -147,12 +152,21 @@ def render(st):
             
             with col1:
                 is_selected = i in st.session_state.auto_translation_selected
-                if st.checkbox("", value=is_selected, key=f"problem_select_{i}"):
-                    if i not in st.session_state.auto_translation_selected:
-                        st.session_state.auto_translation_selected.append(i)
-                else:
-                    if i in st.session_state.auto_translation_selected:
-                        st.session_state.auto_translation_selected.remove(i)
+                checkbox_key = f"problem_select_{i}"
+                
+                # 체크박스 상태 변경 감지
+                new_selected_state = st.checkbox("", value=is_selected, key=checkbox_key)
+                
+                # 상태가 변경된 경우에만 업데이트
+                if new_selected_state != is_selected:
+                    if new_selected_state:
+                        if i not in st.session_state.auto_translation_selected:
+                            st.session_state.auto_translation_selected.append(i)
+                    else:
+                        if i in st.session_state.auto_translation_selected:
+                            st.session_state.auto_translation_selected.remove(i)
+                    # 상태 변경 시 즉시 리렌더링
+                    st.rerun()
             
             with col2:
                 st.markdown(
@@ -169,9 +183,14 @@ def render(st):
             progress_bar = st.progress(0)
             status_text = st.empty()
             
-            selected_problems = [problems[i] for i in st.session_state.auto_translation_selected]
+            # 선택된 문제들 필터링 (유효한 인덱스만)
+            valid_indices = [i for i in st.session_state.auto_translation_selected if i < len(problems)]
+            selected_problems = [problems[i] for i in valid_indices]
             total_count = len(selected_problems)
             current_index = st.session_state.get("auto_translation_current", 0)
+            
+            # 진행 상태 정보 표시
+            st.info(f"📊 총 {total_count}개 문제 중 {current_index + 1}번째 번역 중...")
             
             # 번역 진행
             if current_index < total_count:
@@ -186,23 +205,23 @@ def render(st):
                         f"{problem.get('title', 'Unknown')[:50]}..."
                     )
                     
-                    # 문제 번역
-                    translated_problem = translation_service.translate_problem(problem)
+                    # 문제 번역 및 저장 (i18n 테이블에 저장하고 상태 업데이트)
+                    translated_problem = translation_service.translate_and_save_problem(problem)
                     
-                    # 원본 문제 ID 추가
-                    translated_problem["original_problem_id"] = problem.get("id")
-                    
-                    # 번역된 문제를 qlearn_problems_en 테이블에 저장
-                    db.save_qlearn_problem_en(translated_problem)
-                    
-                    # is_en 필드가 제거되어 상태 업데이트 불필요
-                    
-                    # 성공 결과 저장
-                    st.session_state.auto_translation_results.append({
-                        "problem_id": problem.get("id"),
-                        "title": problem.get("title"),
-                        "status": "success"
-                    })
+                    if translated_problem:
+                        # 성공 결과 저장
+                        st.session_state.auto_translation_results.append({
+                            "problem_id": problem.get("id"),
+                            "title": problem.get("title"),
+                            "status": "success"
+                        })
+                    else:
+                        # 번역 실패
+                        st.session_state.auto_translation_errors.append({
+                            "problem_id": problem.get("id"),
+                            "title": problem.get("title"),
+                            "error": "번역 결과가 없습니다"
+                        })
                     
                     # API 호출 제한을 위한 대기
                     # time.sleep(1) 제거 - 성능 개선

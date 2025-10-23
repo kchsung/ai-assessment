@@ -173,6 +173,20 @@ class EdgeDBClient:
             "reason": reason, "adjusted_by": adjusted_by
         })
 
+    def get_problems_for_translation(self, filters: dict | None = None):
+        """번역이 필요한 문제들을 조회 (translation_done = False)"""
+        params = filters or {}
+        params["translation_done"] = False  # 번역이 완료되지 않은 문제만 조회
+        return self._call("get_problems_for_translation", params) or []
+
+    def save_i18n_problem(self, problem_data: dict) -> bool:
+        """i18n 테이블에 번역된 문제 저장"""
+        return self._call("save_i18n_problem", {"problem_data": problem_data})
+
+    def get_i18n_problems(self, filters: dict | None = None):
+        """i18n 테이블에서 번역된 문제들 조회"""
+        return self._call("get_i18n_problems", filters or {}) or []
+
     def get_multiple_choice_question_by_id(self, question_id: str):
         """ID로 객관식 문제 단건 조회 (캐시 우회용)"""
         return self._call("get_multiple_choice_question_by_id", {"question_id": question_id})
