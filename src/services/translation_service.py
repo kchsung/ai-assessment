@@ -152,7 +152,7 @@ Return only the translated text without any additional explanations or comments.
                 error_msg = f"필수 필드 누락: {missing_fields}"
                 raise ValueError(error_msg)
             
-            # Edge Function을 통해 저장
+            # Edge Function을 통해 저장 (이미 en 필드 업데이트 로직이 포함됨)
             success = self.edge_client.save_i18n_problem(translated_problem)
             
             if success:

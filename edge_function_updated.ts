@@ -2045,22 +2045,105 @@ async function getQuestionsDataVersion(supabaseClient) {
   }
 }
 
-// 번역할 문제들 조회 (subjective 타입만)
+// 번역할 문제들 조회 (qlearn_problems 테이블에서 직접 조회, 이미 번역된 문제 제외)
 async function getProblemsForTranslation(supabaseClient, filters = {}) {
   try {
-    console.log('Getting subjective problems for translation with filters:', filters);
+    console.log('🚀 getProblemsForTranslation 함수 시작');
+    console.log('📥 받은 필터:', JSON.stringify(filters, null, 2));
     
-    // subjective 문제만 조회 (객관식 제외)
-    const subjectiveResult = await getSubjectiveQuestions(supabaseClient, filters);
+    // qlearn_problems 테이블에서 직접 조회
+    console.log('🔍 qlearn_problems 테이블에서 조회 시작...');
+    let query = supabaseClient.from('qlearn_problems').select('*');
     
-    // 결과 파싱
-    const subData = subjectiveResult.ok ? JSON.parse(await subjectiveResult.text()).data : [];
+    // 필터 적용
+    if (filters.id) {
+      console.log('🔧 ID 필터 적용:', filters.id);
+      query = query.eq('id', filters.id);
+    }
+    if (filters.category) {
+      console.log('🔧 Category 필터 적용:', filters.category);
+      query = query.eq('category', filters.category);
+    }
+    if (filters.difficulty) {
+      console.log('🔧 Difficulty 필터 적용:', filters.difficulty);
+      query = query.eq('difficulty', filters.difficulty);
+    }
+    if (filters.topic) {
+      console.log('🔧 Topic 필터 적용:', filters.topic);
+      query = query.eq('topic', filters.topic);
+    }
+    if (filters.lang) {
+      console.log('🔧 Lang 필터 적용:', filters.lang);
+      query = query.eq('lang', filters.lang);
+    }
+    if (filters.active !== undefined) {
+      console.log('🔧 Active 필터 적용:', filters.active);
+      query = query.eq('active', filters.active);
+    }
     
-    console.log(`Found ${subData.length} subjective problems for translation`);
+    // domain 필터도 지원 (category와 동일하게 처리)
+    if (filters.domain && !filters.category) {
+      console.log('🔧 Domain 필터 적용 (category로 변환):', filters.domain);
+      query = query.eq('category', filters.domain);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Get qlearn_problems for translation error:', error);
+      return new Response(JSON.stringify({
+        ok: false,
+        error: error.message
+      }), {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+    
+    console.log(`🔍 qlearn_problems에서 조회된 데이터:`, data?.length || 0, '개');
+    if (data && data.length > 0) {
+      console.log('📋 첫 번째 문제 샘플:', {
+        id: data[0].id,
+        title: data[0].title,
+        category: data[0].category,
+        difficulty: data[0].difficulty
+      });
+    }
+    
+    // qlearn_problem_translations 테이블에서 이미 번역된 문제들 조회
+    const { data: translationStatus, error: translationError } = await supabaseClient
+      .from('qlearn_problem_translations')
+      .select('problem_id, en')
+      .eq('en', true);
+
+    if (translationError) {
+      console.error('⚠️ qlearn_problem_translations 조회 실패:', translationError);
+    }
+
+    // 이미 번역된 문제 ID 목록 생성
+    const translatedProblemIds = new Set();
+    if (translationStatus) {
+      translationStatus.forEach(status => {
+        if (status.en === true) {
+          translatedProblemIds.add(status.problem_id);
+        }
+      });
+    }
+
+    // 이미 번역된 문제(en=true)를 제외
+    const untranslatedProblems = (data || []).filter(problem => {
+      // qlearn_problem_translations 테이블에서 en=true인 문제는 제외
+      return !translatedProblemIds.has(problem.id);
+    });
+    
+    console.log(`Found ${(data || []).length} qlearn_problems, ${untranslatedProblems.length} untranslated (${translatedProblemIds.size} already translated)`);
     
     return new Response(JSON.stringify({
       ok: true,
-      data: subData
+      data: untranslatedProblems
     }), {
       headers: {
         ...corsHeaders,
@@ -2148,6 +2231,53 @@ async function saveI18nProblem(supabaseClient, params) {
     }
 
     console.log('✅ i18n 문제 저장 성공:', data.id);
+
+    // 번역 완료 후 qlearn_problem_translations 테이블의 en 필드를 TRUE로 업데이트
+    try {
+      console.log('🔄 qlearn_problem_translations 테이블의 en 필드를 TRUE로 업데이트 중...');
+      
+      // 먼저 해당 problem_id에 대한 레코드가 있는지 확인
+      const { data: existingRecord, error: checkError } = await supabaseClient
+        .from('qlearn_problem_translations')
+        .select('id')
+        .eq('problem_id', problem_data.source_problem_id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116은 "no rows returned" 오류
+        console.error('⚠️ qlearn_problem_translations 레코드 확인 실패:', checkError);
+      } else if (existingRecord) {
+        // 기존 레코드가 있으면 en 필드만 업데이트
+        const { error: updateError } = await supabaseClient
+          .from('qlearn_problem_translations')
+          .update({ en: true })
+          .eq('problem_id', problem_data.source_problem_id);
+
+        if (updateError) {
+          console.error('⚠️ qlearn_problem_translations en 필드 업데이트 실패:', updateError);
+        } else {
+          console.log('✅ qlearn_problem_translations en 필드 업데이트 성공');
+        }
+      } else {
+        // 기존 레코드가 없으면 새로 생성
+        const { error: insertError } = await supabaseClient
+          .from('qlearn_problem_translations')
+          .insert({
+            problem_id: problem_data.source_problem_id,
+            en: true,
+            jp: false,
+            cn: false
+          });
+
+        if (insertError) {
+          console.error('⚠️ qlearn_problem_translations 새 레코드 생성 실패:', insertError);
+        } else {
+          console.log('✅ qlearn_problem_translations 새 레코드 생성 성공');
+        }
+      }
+    } catch (updateError) {
+      console.error('⚠️ qlearn_problem_translations 업데이트 중 오류:', updateError);
+      // 업데이트 실패해도 번역 저장은 성공했으므로 계속 진행
+    }
 
     return new Response(JSON.stringify({
       ok: true,

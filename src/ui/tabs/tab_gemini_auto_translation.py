@@ -98,7 +98,23 @@ def render(st):
             problems = db.get_problems_for_translation(filters)
             st.session_state.auto_translation_problems = problems
             st.session_state.auto_translation_selected = []
-            st.success(f"✅ {len(problems)}개의 번역이 필요한 문제를 찾았습니다")
+            
+            # 디버깅 정보 표시
+            if problems and len(problems) > 0:
+                st.success(f"✅ {len(problems)}개의 번역이 필요한 문제를 찾았습니다")
+                with st.expander("🔍 디버깅 정보", expanded=False):
+                    st.write("**첫 번째 문제 샘플:**")
+                    first_problem = problems[0]
+                    st.json({
+                        "id": first_problem.get("id"),
+                        "title": first_problem.get("title"),
+                        "category": first_problem.get("category"),
+                        "domain": first_problem.get("domain"),
+                        "difficulty": first_problem.get("difficulty"),
+                        "lang": first_problem.get("lang")
+                    })
+            else:
+                st.warning("⚠️ 번역할 문제가 없습니다.")
         except Exception as e:
             st.error(f"❌ 문제 검색 실패: {str(e)}")
     

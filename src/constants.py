@@ -5,6 +5,7 @@ ASSESSMENT_AREAS = {
     "interview": "interview",
     "learning_concept": "learning_concept",
     "pharma_distribution": "pharma_distribution",
+    "job_practice": "job_practice",
 }
 
 # Supabase q_difficulty enum 값과 정확히 일치
@@ -23,7 +24,7 @@ QUESTION_TYPES = {
 
 # Supabase enum 값들 - 하드코딩 방지용
 VALID_DIFFICULTIES = ["very easy", "easy", "normal", "hard", "very hard"]
-VALID_DOMAINS = ["life", "news", "interview", "learning_concept", "pharma_distribution"]
+VALID_DOMAINS = ["life", "news", "interview", "learning_concept", "pharma_distribution", "job_practice"]
 
 # 기본값
 DEFAULT_DIFFICULTY = "normal"
