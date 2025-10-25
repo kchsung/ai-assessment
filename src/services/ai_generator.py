@@ -181,6 +181,13 @@ class AIQuestionGenerator:
             # 세션 상태에서 선택된 모델 가져오기 (기본값: gpt-5)
             model = st.session_state.get("selected_model", "gpt-5")
             
+            # 디버깅 정보 출력
+            st.info(f"🔍 API 호출 정보:")
+            st.info(f"  모델: {model}")
+            st.info(f"  평가 영역: {area}")
+            st.info(f"  난이도: {difficulty}")
+            st.info(f"  문제 유형: {question_type}")
+            
             resp = self.client.chat.completions.create(
                 model=model,
                 messages=[{"role":"system","content":system_prompt},

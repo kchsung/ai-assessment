@@ -314,13 +314,22 @@ def generate_next_question(st, selected_area, selected_difficulty, selected_type
             return
         
         # 문제 생성
-        result = generator.generate_with_ai(
-            area=area,
-            difficulty=difficulty,
-            question_type=question_type,
-            user_prompt_extra="",
-            system_prompt_extra=additional_requirements or ""
-        )
+        try:
+            result = generator.generate_with_ai(
+                area=area,
+                difficulty=difficulty,
+                question_type=question_type,
+                user_prompt_extra="",
+                system_prompt_extra=additional_requirements or ""
+            )
+        except Exception as api_error:
+            st.error(f"❌ OpenAI API 호출 실패: {str(api_error)}")
+            st.error(f"에러 타입: {type(api_error).__name__}")
+            if hasattr(api_error, 'response'):
+                st.error(f"응답 상태: {api_error.response.status_code if hasattr(api_error.response, 'status_code') else 'N/A'}")
+                st.error(f"응답 내용: {api_error.response.text if hasattr(api_error.response, 'text') else 'N/A'}")
+            st.session_state.auto_generate_running = False
+            return
         
         if result:
             # 생성된 문제를 DB에 저장 (문제 타입에 따라 적절한 테이블에 저장)
