@@ -16,17 +16,37 @@ def get_secret(name: str, default=None) -> str | None:
     # 1) st.secrets (Streamlit Cloud/로컬 secrets.toml)
     try:
         if hasattr(st, 'secrets') and st.secrets:
-            # secrets.toml에서 직접 접근 시도
+            # 방법 1: 직접 접근
             if name in st.secrets:
                 val = st.secrets[name]
                 if val and val != "your_openai_api_key_here" and val.strip() != "":
                     return val
-            # default 섹션에서 접근 시도
+            
+            # 방법 2: getattr 사용
+            try:
+                val = getattr(st.secrets, name)
+                if val and val != "your_openai_api_key_here" and val.strip() != "":
+                    return val
+            except AttributeError:
+                pass
+            
+            # 방법 3: default 섹션에서 접근 시도
             if hasattr(st.secrets, 'default') and hasattr(st.secrets.default, name):
                 val = getattr(st.secrets.default, name)
                 if val and val != "your_openai_api_key_here" and val.strip() != "":
                     return val
-    except Exception:
+            
+            # 방법 4: get() 메서드 사용
+            try:
+                val = st.secrets.get(name)
+                if val and val != "your_openai_api_key_here" and val.strip() != "":
+                    return val
+            except Exception:
+                pass
+                
+    except Exception as e:
+        # 디버깅용: secrets 접근 실패 시 로그
+        print(f"Secrets 접근 실패 ({name}): {e}")
         pass
     
     # 2) 환경변수 (로컬 .env 또는 시스템 환경변수)

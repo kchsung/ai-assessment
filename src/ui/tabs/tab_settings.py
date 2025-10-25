@@ -211,8 +211,39 @@ def render(st):
                 st.write(f"🤖 OPENAI_API_KEY: {'✅ 설정됨' if openai_key else '❌ 누락'}")
                 st.write(f"🤖 GEMINI_API_KEY: {'✅ 설정됨' if gemini_key else '❌ 누락'}")
             
+            # 디버깅 정보 추가
+            with st.expander("🔍 디버깅 정보", expanded=False):
+                st.markdown("**Secrets 접근 테스트:**")
+                
+                # st.secrets 직접 접근 테스트
+                try:
+                    import streamlit as st
+                    secrets_available = hasattr(st, 'secrets') and st.secrets is not None
+                    st.write(f"st.secrets 사용 가능: {'✅' if secrets_available else '❌'}")
+                    
+                    if secrets_available:
+                        # 각 키별로 직접 접근 테스트
+                        test_keys = ["OPENAI_API_KEY", "GEMINI_API_KEY", "EDGE_FUNCTION_URL", "EDGE_SHARED_TOKEN", "SUPABASE_ANON_KEY"]
+                        for key in test_keys:
+                            try:
+                                direct_value = st.secrets[key] if key in st.secrets else None
+                                st.write(f"{key}: {'✅' if direct_value else '❌'} (직접 접근)")
+                            except Exception as e:
+                                st.write(f"{key}: ❌ (에러: {str(e)[:50]}...)")
+                except Exception as e:
+                    st.write(f"Secrets 접근 테스트 실패: {e}")
+                
+                # 환경 변수 테스트
+                st.markdown("**환경 변수 테스트:**")
+                import os
+                env_keys = ["OPENAI_API_KEY", "GEMINI_API_KEY", "EDGE_FUNCTION_URL", "EDGE_SHARED_TOKEN", "SUPABASE_ANON_KEY"]
+                for key in env_keys:
+                    env_value = os.getenv(key)
+                    st.write(f"{key}: {'✅' if env_value else '❌'} (환경변수)")
+            
             if not all([edge_url, edge_token, supabase_key, openai_key, gemini_key]):
                 st.error("⚠️ 일부 필수 설정이 누락되었습니다. 위의 가이드를 따라 설정하세요.")
+                st.info("💡 **해결 방법**: 앱을 재배포하거나 브라우저를 새로고침해보세요.")
             else:
                 st.success("✅ 모든 필수 설정이 완료되었습니다!")
 
