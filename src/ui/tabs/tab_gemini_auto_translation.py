@@ -3,6 +3,7 @@
 """
 from src.services.translation_service import TranslationService
 from src.services.gemini_client import GeminiClient
+from src.constants import ASSESSMENT_AREAS
 import time
 
 def render(st):
@@ -55,7 +56,7 @@ def render(st):
     
     with col1:
         # 평가 영역 필터
-        domains = ["전체", "life", "news", "interview", "learning_concept", "pharma_distribution", "job_practice"]
+        domains = ["전체"] + list(ASSESSMENT_AREAS.keys())
         selected_domain = st.selectbox(
             "평가 영역",
             domains,
