@@ -148,11 +148,11 @@ async function saveStructuredProblem(supabaseClient, params) {
       return new Date().toISOString();
     };
 
-    // 필수 필드 검증
-    if (!params.lang || !params.category || !params.difficulty || !params.problem_type || !params.target_template_code) {
+    // 필수 필드 검증 (problem_type 제외)
+    if (!params.lang || !params.category || !params.difficulty || !params.target_template_code) {
       return new Response(JSON.stringify({
         ok: false,
-        error: "필수 필드가 누락되었습니다: lang, category, difficulty, problem_type, target_template_code"
+        error: "필수 필드가 누락되었습니다: lang, category, difficulty, target_template_code"
       }), {
         status: 400,
         headers: {
@@ -179,7 +179,6 @@ async function saveStructuredProblem(supabaseClient, params) {
       topic: topicValue,  // text[] 배열 (빈 배열이면 null)
       difficulty: params.difficulty,
       time_limit: cleanValue(params.time_limit),
-      problem_type: params.problem_type,
       target_template_code: params.target_template_code,
       created_by: cleanValue(params.created_by),
       created_at: formatTimestamp(params.created_at),
@@ -278,7 +277,6 @@ async function getStructuredProblems(supabaseClient, filters = {}) {
     if (filters.category) query = query.eq('category', filters.category);
     if (filters.difficulty) query = query.eq('difficulty', filters.difficulty);
     if (filters.lang) query = query.eq('lang', filters.lang);
-    if (filters.problem_type) query = query.eq('problem_type', filters.problem_type);
     if (filters.target_template_code) query = query.eq('target_template_code', filters.target_template_code);
     if (filters.active !== undefined) query = query.eq('active', filters.active);
 
@@ -301,7 +299,6 @@ async function getStructuredProblems(supabaseClient, filters = {}) {
         topic: r.topic,
         difficulty: r.difficulty,
         time_limit: r.time_limit,
-        problem_type: r.problem_type,
         target_template_code: r.target_template_code,
         created_by: r.created_by,
         created_at: r.created_at,

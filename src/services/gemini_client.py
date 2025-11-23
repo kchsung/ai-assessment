@@ -3,6 +3,7 @@
 """
 import os
 import json
+import time
 from datetime import datetime
 import google.generativeai as genai
 from src.config import get_secret
@@ -302,15 +303,9 @@ class GeminiClient:
                 properties={
                     "meta_layer": types.Schema(
                         type=types.Type.OBJECT,
-                        required=["id", "lang", "category", "difficulty", "time_limit", "problem_type", "target_template_code", "active"],
+                        required=["id", "category", "difficulty", "target_template_code", "time_limit"],
                         properties={
-                            "idx": types.Schema(
-                                type=types.Type.INTEGER,
-                            ),
                             "id": types.Schema(
-                                type=types.Type.STRING,
-                            ),
-                            "lang": types.Schema(
                                 type=types.Type.STRING,
                             ),
                             "category": types.Schema(
@@ -325,32 +320,17 @@ class GeminiClient:
                             "difficulty": types.Schema(
                                 type=types.Type.STRING,
                             ),
-                            "time_limit": types.Schema(
-                                type=types.Type.STRING,
-                            ),
-                            "problem_type": types.Schema(
-                                type=types.Type.STRING,
-                            ),
                             "target_template_code": types.Schema(
                                 type=types.Type.STRING,
                             ),
-                            "created_by": types.Schema(
+                            "time_limit": types.Schema(
                                 type=types.Type.STRING,
-                            ),
-                            "created_at": types.Schema(
-                                type=types.Type.STRING,
-                            ),
-                            "updated_at": types.Schema(
-                                type=types.Type.STRING,
-                            ),
-                            "active": types.Schema(
-                                type=types.Type.BOOLEAN,
                             ),
                         },
                     ),
                     "user_view_layer": types.Schema(
                         type=types.Type.OBJECT,
-                        required=["title", "summary", "scenario", "task"],
+                        required=["title", "summary", "scenario_public", "goals", "task_instruction", "constraints_public", "opening_line", "starter_guide"],
                         properties={
                             "title": types.Schema(
                                 type=types.Type.STRING,
@@ -358,38 +338,17 @@ class GeminiClient:
                             "summary": types.Schema(
                                 type=types.Type.STRING,
                             ),
-                            "topic_summary": types.Schema(
-                                type=types.Type.STRING,
-                            ),
-                            "scenario": types.Schema(
-                                type=types.Type.STRING,
-                            ),
                             "scenario_public": types.Schema(
                                 type=types.Type.STRING,
                             ),
-                            "task": types.Schema(
-                                type=types.Type.STRING,
+                            "goals": types.Schema(
+                                type=types.Type.ARRAY,
+                                items=types.Schema(
+                                    type=types.Type.STRING,
+                                ),
                             ),
                             "task_instruction": types.Schema(
                                 type=types.Type.STRING,
-                            ),
-                            "goal": types.Schema(
-                                type=types.Type.ARRAY,
-                                items=types.Schema(
-                                    type=types.Type.STRING,
-                                ),
-                            ),
-                            "requirements": types.Schema(
-                                type=types.Type.ARRAY,
-                                items=types.Schema(
-                                    type=types.Type.STRING,
-                                ),
-                            ),
-                            "constraints": types.Schema(
-                                type=types.Type.ARRAY,
-                                items=types.Schema(
-                                    type=types.Type.STRING,
-                                ),
                             ),
                             "constraints_public": types.Schema(
                                 type=types.Type.ARRAY,
@@ -400,12 +359,6 @@ class GeminiClient:
                             "opening_line": types.Schema(
                                 type=types.Type.STRING,
                             ),
-                            "first_question": types.Schema(
-                                type=types.Type.ARRAY,
-                                items=types.Schema(
-                                    type=types.Type.STRING,
-                                ),
-                            ),
                             "starter_guide": types.Schema(
                                 type=types.Type.STRING,
                             ),
@@ -415,14 +368,11 @@ class GeminiClient:
                                     type=types.Type.STRING,
                                 ),
                             ),
-                            "task_raw": types.Schema(
-                                type=types.Type.STRING,
-                            ),
                         },
                     ),
                     "system_view_layer": types.Schema(
                         type=types.Type.OBJECT,
-                        required=["data_facts", "guide"],
+                        required=["data_facts", "hidden_constraints", "reveal_rules", "knowledge_base_ref"],
                         properties={
                             "data_facts": types.Schema(
                                 type=types.Type.ARRAY,
@@ -451,57 +401,18 @@ class GeminiClient:
                                     type=types.Type.STRING,
                                 ),
                             ),
-                            "guide": types.Schema(
-                                type=types.Type.OBJECT,
-                                required=["tools", "approach", "considerations"],
-                                properties={
-                                    "tools": types.Schema(
-                                        type=types.Type.ARRAY,
-                                        items=types.Schema(
-                                            type=types.Type.STRING,
-                                        ),
-                                    ),
-                                    "approach": types.Schema(
-                                        type=types.Type.ARRAY,
-                                        items=types.Schema(
-                                            type=types.Type.STRING,
-                                        ),
-                                    ),
-                                    "considerations": types.Schema(
-                                        type=types.Type.ARRAY,
-                                        items=types.Schema(
-                                            type=types.Type.STRING,
-                                        ),
-                                    ),
-                                },
-                            ),
-                            "reference": types.Schema(
+                            "knowledge_base_ref": types.Schema(
                                 type=types.Type.ARRAY,
                                 items=types.Schema(
-                                    type=types.Type.OBJECT,
-                                    required=["key", "value"],
-                                    properties={
-                                        "key": types.Schema(
-                                            type=types.Type.STRING,
-                                        ),
-                                        "value": types.Schema(
-                                            type=types.Type.STRING,
-                                        ),
-                                    },
+                                    type=types.Type.STRING,
                                 ),
                             ),
                         },
                     ),
                     "evaluation_layer": types.Schema(
                         type=types.Type.OBJECT,
-                        required=["evaluation", "process_criteria", "result_criteria", "scoring_weights", "critical_fail_rules"],
+                        required=["process_criteria", "result_criteria", "scoring_weights", "model_answer", "critical_fail_rules"],
                         properties={
-                            "evaluation": types.Schema(
-                                type=types.Type.ARRAY,
-                                items=types.Schema(
-                                    type=types.Type.STRING,
-                                ),
-                            ),
                             "process_criteria": types.Schema(
                                 type=types.Type.ARRAY,
                                 items=types.Schema(
@@ -596,17 +507,45 @@ class GeminiClient:
                     st.write(f"**User Prompt 길이**: {len(user_prompt)} 문자")
                     st.write(f"**Response Schema**: 설정됨 (4개 레이어)")
             
-            # 스트리밍으로 응답 받기
+            # 스트리밍으로 응답 받기 (재시도 로직 포함)
+            max_retries = 3
+            retry_delay = 2  # 초기 대기 시간 (초)
             response_text = ""
             chunk_count = 0
-            for chunk in client.models.generate_content_stream(
-                model=model,
-                contents=contents,
-                config=generate_content_config,
-            ):
-                if hasattr(chunk, 'text') and chunk.text:
-                    response_text += chunk.text
-                    chunk_count += 1
+            
+            for attempt in range(max_retries):
+                try:
+                    response_text = ""
+                    chunk_count = 0
+                    for chunk in client.models.generate_content_stream(
+                        model=model,
+                        contents=contents,
+                        config=generate_content_config,
+                    ):
+                        if hasattr(chunk, 'text') and chunk.text:
+                            response_text += chunk.text
+                            chunk_count += 1
+                    
+                    # 성공적으로 응답을 받았으면 루프 종료
+                    break
+                    
+                except Exception as e:
+                    error_str = str(e)
+                    # 503 에러 또는 과부하 관련 에러인 경우 재시도
+                    if "503" in error_str or "UNAVAILABLE" in error_str or "overloaded" in error_str.lower():
+                        if attempt < max_retries - 1:
+                            wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                            import streamlit as st
+                            if hasattr(st, 'write'):
+                                st.warning(f"⚠️ 모델이 과부하 상태입니다. {wait_time}초 후 재시도합니다... (시도 {attempt + 1}/{max_retries})")
+                            time.sleep(wait_time)
+                            continue
+                        else:
+                            # 최대 재시도 횟수 초과
+                            raise RuntimeError(f"모델이 과부하 상태입니다. {max_retries}번 재시도 후에도 실패했습니다. 잠시 후 다시 시도해주세요.")
+                    else:
+                        # 503이 아닌 다른 에러는 즉시 재발생
+                        raise
             
             # 디버깅: 응답 확인
             if hasattr(st, 'write'):

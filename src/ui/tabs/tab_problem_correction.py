@@ -961,7 +961,6 @@ def map_to_structured_problem_format(corrected_data: dict) -> dict:
         "topic": meta_layer_clean.get("topic", []),  # text[] 배열
         "difficulty": meta_layer_clean.get("difficulty", "normal"),
         "time_limit": meta_layer_clean.get("time_limit", ""),
-        "problem_type": meta_layer_clean.get("problem_type", ""),
         "target_template_code": meta_layer_clean.get("target_template_code", ""),
         "created_by": meta_layer_clean.get("created_by"),
         "created_at": format_timestamp(meta_layer_clean.get("created_at")),
@@ -1210,7 +1209,7 @@ def auto_process_all_questions(st, questions):
                             st.json(mapped_data)
                         
                         # 필수 필드 확인
-                        required_fields = ["lang", "category", "difficulty", "problem_type", "target_template_code"]
+                        required_fields = ["lang", "category", "difficulty", "target_template_code"]
                         missing_fields = [field for field in required_fields if not mapped_data.get(field)]
                         if missing_fields:
                             st.error(f"❌ 필수 필드 누락: {missing_fields}")
