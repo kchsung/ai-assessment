@@ -173,7 +173,7 @@ async function saveStructuredProblem(supabaseClient, params) {
     }
 
     const problemData = {
-      idx: cleanValue(params.idx),
+      // idx는 자동 증가 컬럼이므로 제외
       lang: params.lang,
       category: params.category,
       topic: topicValue,  // text[] 배열 (빈 배열이면 null)
@@ -192,13 +192,20 @@ async function saveStructuredProblem(supabaseClient, params) {
     };
     
     // 최종 데이터에서 null 값들 제거 (선택적 필드만)
-    const optionalFields = ['idx', 'topic', 'time_limit', 'created_by'];
+    // idx는 자동 증가 컬럼이므로 제외
+    const optionalFields = ['topic', 'time_limit', 'created_by'];
     optionalFields.forEach(key => {
       if (problemData[key] === null || problemData[key] === undefined) {
         delete problemData[key];
         console.log(`🗑️ null/undefined 값 제거: ${key}`);
       }
     });
+    
+    // idx가 params에 포함되어 있으면 제거 (자동 증가 컬럼이므로)
+    if ('idx' in problemData) {
+      delete problemData.idx;
+      console.log(`🗑️ idx 필드 제거 (자동 증가 컬럼)`);
+    }
 
     // UUID 필드 중 id만 제거 (Supabase에서 자동 생성되도록)
     // problemData에는 id가 없지만, 혹시 모를 경우를 대비해 체크

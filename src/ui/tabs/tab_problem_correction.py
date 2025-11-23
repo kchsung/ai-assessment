@@ -915,11 +915,11 @@ def map_to_structured_problem_format(corrected_data: dict) -> dict:
         return now.isoformat()
     
     # meta_layer에서 필드 추출
-    # meta_layer에 id가 있으면 제거 (테이블에서 자동 생성)
-    meta_layer_clean = {k: v for k, v in meta_layer.items() if k != 'id'}
+    # meta_layer에 id와 idx가 있으면 제거 (테이블에서 자동 생성)
+    meta_layer_clean = {k: v for k, v in meta_layer.items() if k not in ['id', 'idx']}
     
     mapped_data = {
-        "idx": meta_layer_clean.get("idx"),
+        # idx는 자동 증가 컬럼이므로 제외
         "lang": meta_layer_clean.get("lang", "kr"),
         "category": meta_layer_clean.get("category", ""),
         "topic": meta_layer_clean.get("topic", []),  # text[] 배열
