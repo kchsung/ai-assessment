@@ -32,7 +32,43 @@ def render(st):
     
     # DB 연결 체크
     if st.session_state.db is None:
-        st.error("데이터베이스 연결이 초기화되지 않았습니다.")
+        st.error("❌ 데이터베이스 연결이 초기화되지 않았습니다.")
+        st.info("💡 **해결 방법**:")
+        st.write("1. ⚙️ **설정** 탭으로 이동하세요.")
+        st.write("2. **Edge Function URL**과 **Edge Shared Token**이 올바르게 설정되어 있는지 확인하세요.")
+        st.write("3. Streamlit Cloud를 사용하는 경우 `.streamlit/secrets.toml` 파일에 다음 값들이 설정되어 있어야 합니다:")
+        st.code("""
+EDGE_FUNCTION_URL = "your-edge-function-url"
+EDGE_SHARED_TOKEN = "your-edge-shared-token"
+SUPABASE_ANON_KEY = "your-supabase-anon-key"
+        """)
+        st.write("4. 로컬 환경을 사용하는 경우 `.env` 파일에 다음 값들이 설정되어 있어야 합니다:")
+        st.code("""
+EDGE_FUNCTION_URL=your-edge-function-url
+EDGE_SHARED_TOKEN=your-edge-shared-token
+SUPABASE_ANON_KEY=your-supabase-anon-key
+        """)
+        
+        # 디버깅 정보 표시
+        with st.expander("🔍 디버깅 정보", expanded=False):
+            from src.config import get_secret
+            import os
+            edge_url = get_secret("EDGE_FUNCTION_URL") or os.getenv("EDGE_FUNCTION_URL")
+            edge_token = get_secret("EDGE_SHARED_TOKEN") or os.getenv("EDGE_SHARED_TOKEN")
+            supabase_key = get_secret("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
+            
+            st.write("**환경 변수 확인:**")
+            st.write(f"- EDGE_FUNCTION_URL: {'✅ 설정됨' if edge_url else '❌ 설정되지 않음'}")
+            st.write(f"- EDGE_SHARED_TOKEN: {'✅ 설정됨' if edge_token else '❌ 설정되지 않음'}")
+            st.write(f"- SUPABASE_ANON_KEY: {'✅ 설정됨' if supabase_key else '❌ 설정되지 않음'}")
+            
+            if st.session_state.get("_edge_init_ok") is False:
+                st.error("Edge Function 초기화 실패")
+            elif st.session_state.get("_edge_init_ok") is True:
+                st.success("Edge Function 초기화 완료")
+            else:
+                st.warning("Edge Function 초기화 상태 확인 불가")
+        
         return
     
     # 디버깅 정보 표시 섹션 (고정)
