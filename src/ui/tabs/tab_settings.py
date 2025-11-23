@@ -74,6 +74,7 @@ def render(st):
     with col1:
         # 사용 가능한 제미나이 모델 목록
         available_gemini_models = {
+            "gemini-3-pro-preview": "Gemini 3 Pro Preview (최신 프리뷰 모델)",
             "gemini-2.5-pro": "Gemini 2.5 Pro (최신 모델, 최고 성능)",
             "gemini-1.5-pro": "Gemini 1.5 Pro (안정적, 높은 성능)",
             "gemini-1.5-flash": "Gemini 1.5 Flash (빠른 응답, 기본 성능)",
@@ -111,9 +112,9 @@ def render(st):
         
         # Temperature 슬라이더
         selected_temperature = st.slider(
-            "Temperature 값 (0.0 = 일관된 응답, 1.0 = 창의적 응답):",
+            "Temperature 값 (0.0 = 일관된 응답, 2.0 = 매우 창의적 응답):",
             min_value=0.0,
-            max_value=1.0,
+            max_value=2.0,
             value=current_temperature,
             step=0.1,
             key="settings_gemini_temperature"
@@ -126,8 +127,14 @@ def render(st):
         elif selected_temperature <= 0.5:
             temp_desc = "균형잡힌 응답 (일반적인 용도에 적합)"
             temp_color = "🟡"
-        else:
+        elif selected_temperature <= 1.0:
             temp_desc = "창의적인 응답 (다양한 관점이 필요한 경우)"
+            temp_color = "🟠"
+        elif selected_temperature <= 1.5:
+            temp_desc = "매우 창의적인 응답 (혁신적인 아이디어 필요)"
+            temp_color = "🔴"
+        else:
+            temp_desc = "극도로 창의적인 응답 (최대 다양성)"
             temp_color = "🔴"
         
         st.info(f"{temp_color} **현재 Temperature**: {selected_temperature} - {temp_desc}")
