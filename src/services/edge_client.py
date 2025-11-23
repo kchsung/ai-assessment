@@ -6,6 +6,9 @@ class EdgeDBClient:
         self.base_url = base_url or os.getenv("EDGE_FUNCTION_URL")
         self.token = token or os.getenv("EDGE_SHARED_TOKEN")
         self.supabase_anon = supabase_anon or os.getenv("SUPABASE_ANON_KEY")
+        # structured_problems 전용 Edge Function URL
+        self.structured_problems_url = os.getenv("STRUCTURED_PROBLEMS_EDGE_FUNCTION_URL") or \
+                                      (self.base_url.replace("/ai-bank", "/structured-problems") if self.base_url else None)
         if not self.base_url:
             raise RuntimeError("EDGE_FUNCTION_URL not set")
         if not self.token:
@@ -331,4 +334,158 @@ class EdgeDBClient:
     def update_qlearn_problem_multiple(self, problem_id: str, updates: dict) -> bool:
         """qlearn_problems_multiple 테이블의 문제 업데이트"""
         self._call("update_qlearn_problem_multiple", {"problem_id": problem_id, "updates": updates})
+        return True
+    
+    # structured_problems 테이블 관련 메서드들 (별도 Edge Function 사용)
+    def _call_structured_problems(self, action: str, params: dict | None = None, timeout: int = 30, max_retries: int = 3):
+        """structured_problems 전용 Edge Function 호출"""
+        import streamlit as st
+        
+        if not self.structured_problems_url:
+            error_msg = "STRUCTURED_PROBLEMS_EDGE_FUNCTION_URL not set"
+            if hasattr(st, 'write'):
+                st.error(f"❌ {error_msg}")
+            raise RuntimeError(error_msg)
+        
+        headers = {
+            "content-type": "application/json",
+            "x-edge-token": self.token,
+        }
+        if self.supabase_anon:
+            headers["authorization"] = f"Bearer {self.supabase_anon}"
+
+        payload = {"action": action, "params": params or {}}
+        
+        # 디버깅: 요청 정보
+        if hasattr(st, 'write'):
+            with st.expander("🌐 HTTP 요청 상세", expanded=False):
+                st.write(f"**URL**: {self.structured_problems_url}")
+                st.write(f"**Method**: POST")
+                st.write(f"**Headers**: {list(headers.keys())}")
+                st.write(f"**Payload Size**: {len(str(payload))} bytes")
+        
+        # 재시도 로직
+        for attempt in range(max_retries):
+            try:
+                if hasattr(st, 'write') and attempt > 0:
+                    st.info(f"🔄 재시도 {attempt + 1}/{max_retries}")
+                
+                resp = requests.post(
+                    self.structured_problems_url, 
+                    headers=headers, 
+                    json=payload,
+                    timeout=timeout,
+                    stream=False
+                )
+                
+                # 디버깅: 응답 상태
+                if hasattr(st, 'write'):
+                    with st.expander("📡 HTTP 응답 상세", expanded=False):
+                        st.write(f"**Status Code**: {resp.status_code}")
+                        st.write(f"**Response Headers**: {dict(resp.headers)}")
+                        st.write(f"**Response Text (처음 500자)**: {resp.text[:500]}")
+                
+                if resp.status_code >= 400:
+                    error_msg = f"Edge error {resp.status_code}: {resp.text}"
+                    if hasattr(st, 'write'):
+                        st.error(f"❌ {error_msg}")
+                    raise RuntimeError(error_msg)
+                
+                try:
+                    data = resp.json()
+                except ValueError as e:
+                    response_preview = resp.text[:500] + "..." if len(resp.text) > 500 else resp.text
+                    error_msg = f"Edge JSON parse error: {e}, Response preview: {response_preview}"
+                    if hasattr(st, 'write'):
+                        st.error(f"❌ {error_msg}")
+                    raise RuntimeError(error_msg)
+                
+                if not data.get("ok"):
+                    error_msg = f"Edge failure: {data.get('error')}"
+                    if hasattr(st, 'write'):
+                        st.error(f"❌ {error_msg}")
+                        st.json(data)
+                    raise RuntimeError(error_msg)
+                
+                return data
+                
+            except (requests.exceptions.ChunkedEncodingError, 
+                    requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout) as e:
+                if attempt < max_retries - 1:
+                    import time
+                    if hasattr(st, 'write'):
+                        st.warning(f"⚠️ 네트워크 오류 (재시도 대기 중...): {str(e)}")
+                    time.sleep(2 ** attempt)
+                    continue
+                else:
+                    error_msg = f"네트워크 오류로 인한 요청 실패 (최대 재시도 횟수 초과): {e}"
+                    if hasattr(st, 'write'):
+                        st.error(f"❌ {error_msg}")
+                    raise RuntimeError(error_msg)
+            except Exception as e:
+                error_msg = f"예상치 못한 오류: {e}"
+                if hasattr(st, 'write'):
+                    st.error(f"❌ {error_msg}")
+                    import traceback
+                    with st.expander("🔍 상세 오류 정보", expanded=False):
+                        st.code(traceback.format_exc())
+                raise RuntimeError(error_msg)
+    
+    def save_structured_problem(self, problem: dict) -> bool:
+        """structured_problems 테이블에 문제 저장"""
+        import json
+        import streamlit as st
+        
+        try:
+            # 디버깅: 요청 데이터 로깅
+            if hasattr(st, 'write'):
+                with st.expander("🔍 Edge Function 호출 정보", expanded=False):
+                    st.write(f"**URL**: {self.structured_problems_url}")
+                    st.write(f"**Action**: save_structured_problem")
+                    st.write("**요청 데이터**:")
+                    st.json(problem)
+            
+            result = self._call_structured_problems("save_structured_problem", problem)
+            
+            # 디버깅: 응답 데이터 로깅
+            if hasattr(st, 'write'):
+                with st.expander("📥 Edge Function 응답", expanded=False):
+                    st.json(result)
+            
+            # 응답 확인
+            if isinstance(result, dict):
+                if result.get("ok"):
+                    if hasattr(st, 'write'):
+                        st.success(f"✅ Edge Function 응답 성공: {len(result.get('data', []))}개 레코드 저장됨")
+                    return True
+                else:
+                    error_msg = result.get('error', '알 수 없는 오류')
+                    if hasattr(st, 'write'):
+                        st.error(f"❌ Edge Function 오류: {error_msg}")
+                    raise RuntimeError(f"Edge Function 오류: {error_msg}")
+            else:
+                if hasattr(st, 'write'):
+                    st.warning(f"⚠️ 예상치 못한 응답 형식: {type(result)}")
+                return bool(result)
+                
+        except Exception as e:
+            error_msg = f"저장 중 오류: {str(e)}"
+            if hasattr(st, 'write'):
+                st.error(f"❌ {error_msg}")
+                import traceback
+                with st.expander("🔍 상세 오류 정보", expanded=False):
+                    st.code(traceback.format_exc())
+            raise RuntimeError(error_msg)
+    
+    def get_structured_problems(self, filters: dict | None = None):
+        """structured_problems 테이블에서 문제 조회"""
+        result = self._call_structured_problems("get_structured_problems", filters or {})
+        if isinstance(result, dict) and result.get("ok") and "data" in result:
+            return result["data"]
+        return []
+    
+    def update_structured_problem(self, problem_id: str, updates: dict) -> bool:
+        """structured_problems 테이블의 문제 업데이트"""
+        self._call_structured_problems("update_structured_problem", {"problem_id": problem_id, "updates": updates})
         return True

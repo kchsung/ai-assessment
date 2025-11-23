@@ -28,70 +28,181 @@ def update_selection(question_index):
 
 def render(st):
     st.header("🤖 자동 문제 교정")
-    st.caption("questions_multiple_choice/questions_subjective 테이블의 문제를 교정하여 qlearn_problems_multiple/qlearn_problems 테이블에 저장합니다.")
+    st.caption("questions_multiple_choice/questions_subjective 테이블의 문제를 교정하여 structured_problems 테이블에 저장합니다.")
     
     # DB 연결 체크
     if st.session_state.db is None:
         st.error("데이터베이스 연결이 초기화되지 않았습니다.")
         return
     
-    # 디버깅 정보 표시 섹션 (고정) - 주석처리
-    # st.markdown("---")
-    # st.markdown("### 🔧 AI 교정 디버깅 정보")
-    # 
-    # # 디버깅 정보 상태 확인
-    # debug_count = len(st.session_state.get("correction_debug_info", []))
-    # st.info(f"현재 저장된 디버깅 정보: {debug_count}개")
-    # 
-    # if debug_count > 0:
-    #     # 최신 디버깅 정보 표시
-    #     latest_debug = st.session_state.correction_debug_info[-1]
-    #     
-    #     col1, col2 = st.columns([3, 1])
-    #     with col1:
-    #         st.info(f"**최신 교정 결과**: {latest_debug['question_title'][:50]}...")
-    #     with col2:
-    #         if st.button("🗑️ 디버깅 정보 초기화", key="clear_debug_info"):
-    #             st.session_state.correction_debug_info = []
-    #             st.rerun()
-    #     
-    #     # 디버깅 정보 상세 표시
-    #     with st.expander("📊 상세 디버깅 정보", expanded=True):
-    #         # 상태 표시
-    #         if latest_debug.get("status") == "success":
-    #             st.success("✅ 교정 성공")
-    #         else:
-    #             st.error("❌ 교정 실패")
-    #         
-    #         # 탭으로 구분
-    #         tab1, tab2, tab3, tab4 = st.tabs(["원본 데이터", "AI 응답", "교정 데이터", "저장 데이터"])
-    #         
-    #         with tab1:
-    #             st.json(latest_debug.get("original_data", {}))
-    #         
-    #         with tab2:
-    #             st.text(latest_debug.get("ai_response", ""))
-    #         
-    #         with tab3:
-    #             if latest_debug.get("corrected_data"):
-    #                 st.json(latest_debug.get("corrected_data"))
-    #             else:
-    #                 st.warning("교정 데이터가 없습니다.")
-    #         
-    #         with tab4:
-    #             if latest_debug.get("mapped_data"):
-    #                 st.json(latest_debug.get("mapped_data"))
-    #                 st.info(f"저장 대상: {latest_debug.get('target_table', 'N/A')}")
-    #                 if latest_debug.get("save_success"):
-    #                     st.success("저장 성공")
-    #                 else:
-    #                     st.error("저장 실패")
-    #             else:
-    #                 st.warning("저장 데이터가 없습니다.")
-    # else:
-    #     st.warning("디버깅 정보가 없습니다. 문제 교정을 실행하면 여기에 정보가 표시됩니다.")
-    # 
-    # st.markdown("---")
+    # 디버깅 정보 표시 섹션 (고정)
+    st.markdown("---")
+    st.markdown("### 🔧 AI 교정 디버깅 정보")
+    
+    # 메서드 사용 정보 표시 (항상 표시)
+    if "correction_method_debug" in st.session_state and st.session_state.correction_method_debug:
+        latest_method_debug = st.session_state.correction_method_debug[-1]
+        use_new = latest_method_debug.get("use_new_method", False)
+        debug_info = latest_method_debug.get("debug_info", {})
+        
+        # 항상 표시되는 경고 박스
+        if not use_new:
+            st.error("⚠️ **중요**: `review_content` 메서드가 사용되었습니다. 레이어 구조가 아닌 일반 형식으로 응답됩니다.")
+            st.write("**상세 정보:**")
+            st.json(debug_info)
+            if debug_info.get("reason"):
+                st.write(f"**이유**: {debug_info.get('reason')}")
+            if debug_info.get("import_error"):
+                st.write(f"**Import 오류**: {debug_info.get('import_error')}")
+            st.info("💡 **해결 방법**: `pip install google-genai`를 실행하세요.")
+        else:
+            st.success("✅ `correct_problem` 메서드가 사용되었습니다 (레이어 구조)")
+        
+        with st.expander("🔍 최근 API 메서드 선택 정보", expanded=False):
+            st.write("**사용된 메서드**:", "✅ `correct_problem`" if use_new else "⚠️ `review_content`")
+            st.json(debug_info)
+    
+    if "correction_method_used" in st.session_state and st.session_state.correction_method_used:
+        with st.expander("📋 메서드 사용 이력", expanded=False):
+            for i, method_info in enumerate(st.session_state.correction_method_used[-5:], 1):  # 최근 5개만
+                st.write(f"{i}. **{method_info.get('method')}** - {method_info.get('timestamp', 'N/A')}")
+                if method_info.get('error'):
+                    st.write(f"   오류: {method_info.get('error')}")
+                if method_info.get('reason'):
+                    st.write(f"   이유: {method_info.get('reason')}")
+    
+    # 디버깅 정보 상태 확인
+    debug_count = len(st.session_state.get("correction_debug_info", []))
+    st.info(f"현재 저장된 디버깅 정보: {debug_count}개")
+    
+    if debug_count > 0:
+        # 최신 디버깅 정보 표시
+        latest_debug = st.session_state.correction_debug_info[-1]
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.info(f"**최신 교정 결과**: {latest_debug.get('question_title', 'N/A')[:50]}...")
+        with col2:
+            if st.button("🗑️ 디버깅 정보 초기화", key="clear_debug_info"):
+                st.session_state.correction_debug_info = []
+                st.rerun()
+        
+        # 디버깅 정보 상세 표시
+        with st.expander("📊 상세 디버깅 정보", expanded=True):
+            # 상태 표시
+            if latest_debug.get("status") == "success":
+                st.success("✅ 교정 성공")
+            else:
+                st.error(f"❌ 교정 실패: {latest_debug.get('status', 'unknown')}")
+            
+            # 저장 상태 표시
+            if latest_debug.get("save_success"):
+                st.success("✅ 저장 성공")
+            else:
+                st.error(f"❌ 저장 실패")
+                if latest_debug.get("save_error"):
+                    st.error(f"오류: {latest_debug.get('save_error')}")
+            
+            # 탭으로 구분
+            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["원본 데이터", "AI 응답", "교정 데이터", "매핑 데이터", "저장 오류", "🔧 API 설정"])
+            
+            with tab1:
+                st.json(latest_debug.get("original_data", {}))
+            
+            with tab2:
+                ai_response = latest_debug.get("ai_response", "")
+                if ai_response:
+                    st.text(ai_response[:2000] + "..." if len(ai_response) > 2000 else ai_response)
+                else:
+                    st.warning("AI 응답이 없습니다.")
+            
+            with tab3:
+                if latest_debug.get("corrected_data"):
+                    st.json(latest_debug.get("corrected_data"))
+                else:
+                    st.warning("교정 데이터가 없습니다.")
+            
+            with tab4:
+                if latest_debug.get("mapped_data"):
+                    st.json(latest_debug.get("mapped_data"))
+                    st.info(f"저장 대상: {latest_debug.get('target_table', 'N/A')}")
+                else:
+                    st.warning("매핑 데이터가 없습니다.")
+            
+            with tab5:
+                if latest_debug.get("save_error"):
+                    st.error(latest_debug.get("save_error"))
+                else:
+                    st.info("저장 오류 정보가 없습니다.")
+            
+            with tab6:
+                # 최신 API 호출 정보 표시
+                if "gemini_api_debug" in st.session_state and st.session_state.gemini_api_debug:
+                    latest_api_debug = st.session_state.gemini_api_debug[-1]
+                    
+                    st.markdown("### 🤖 제미나이 모델 정보")
+                    st.write(f"**모델**: `{latest_api_debug.get('model', 'N/A')}`")
+                    st.write(f"**사용된 메서드**: `{latest_api_debug.get('method', 'N/A')}`")
+                    st.write(f"**호출 시간**: {latest_api_debug.get('timestamp', 'N/A')}")
+                    
+                    st.markdown("### ⚙️ API 파라미터")
+                    params = latest_api_debug.get("parameters", {})
+                    param_col1, param_col2 = st.columns(2)
+                    with param_col1:
+                        st.write(f"**Temperature**: {params.get('temperature', 'N/A')}")
+                        st.write(f"**Thinking Level**: {params.get('thinking_level', 'N/A')}")
+                    with param_col2:
+                        st.write(f"**Media Resolution**: {params.get('media_resolution', 'N/A')}")
+                        st.write(f"**Response MIME Type**: {params.get('response_mime_type', 'N/A')}")
+                    st.write(f"**Response Schema**: {params.get('response_schema', 'N/A')}")
+                    
+                    st.markdown("### 📝 사용된 프롬프트")
+                    prompts = latest_api_debug.get("prompts", {})
+                    
+                    # System Prompt
+                    with st.expander("📋 System Prompt (시스템 프롬프트)", expanded=False):
+                        system_prompt = prompts.get("system_prompt", "")
+                        if system_prompt:
+                            st.write(f"**길이**: {prompts.get('system_prompt_length', 0)} 문자")
+                            st.code(system_prompt, language="text")
+                        else:
+                            st.warning("System Prompt가 없습니다.")
+                    
+                    # User Prompt
+                    with st.expander("💬 User Prompt (사용자 프롬프트)", expanded=False):
+                        user_prompt = prompts.get("user_prompt", "")
+                        if user_prompt:
+                            st.write(f"**길이**: {prompts.get('user_prompt_length', 0)} 문자")
+                            st.code(user_prompt[:5000] + "..." if len(user_prompt) > 5000 else user_prompt, language="text")
+                        else:
+                            st.warning("User Prompt가 없습니다.")
+                    
+                    # Combined Prompt (review_content의 경우)
+                    if "combined_prompt" in prompts:
+                        with st.expander("🔗 Combined Prompt (통합 프롬프트)", expanded=False):
+                            combined_prompt = prompts.get("combined_prompt", "")
+                            if combined_prompt:
+                                st.write(f"**길이**: {prompts.get('combined_prompt_length', 0)} 문자")
+                                st.code(combined_prompt[:5000] + "..." if len(combined_prompt) > 5000 else combined_prompt, language="text")
+                    
+                    # 전체 디버깅 정보 (JSON)
+                    with st.expander("🔍 전체 API 디버깅 정보 (JSON)", expanded=False):
+                        st.json(latest_api_debug)
+                    
+                    # 이전 호출 이력
+                    if len(st.session_state.gemini_api_debug) > 1:
+                        st.markdown("### 📚 이전 API 호출 이력")
+                        for i, api_info in enumerate(st.session_state.gemini_api_debug[-5:-1], 1):  # 최근 5개 중 마지막 4개
+                            with st.expander(f"호출 #{len(st.session_state.gemini_api_debug) - i} - {api_info.get('timestamp', 'N/A')}", expanded=False):
+                                st.write(f"**모델**: {api_info.get('model', 'N/A')}")
+                                st.write(f"**메서드**: {api_info.get('method', 'N/A')}")
+                                st.json(api_info.get("parameters", {}))
+                else:
+                    st.warning("API 호출 정보가 없습니다. 문제 교정을 실행하면 여기에 정보가 표시됩니다.")
+    else:
+        st.warning("디버깅 정보가 없습니다. 문제 교정을 실행하면 여기에 정보가 표시됩니다.")
+    
+    st.markdown("---")
     
     
     # 1단계: 문제 가져오기 및 필터링
@@ -740,6 +851,94 @@ def map_question_to_qlearn_format(question: dict) -> dict:
     
     return mapped_data
 
+def map_to_structured_problem_format(corrected_data: dict) -> dict:
+    """교정된 데이터를 structured_problems 테이블 형식으로 매핑"""
+    
+    # 교정된 데이터는 4개 레이어 구조로 반환됨
+    meta_layer = corrected_data.get("meta_layer", {})
+    user_view_layer = corrected_data.get("user_view_layer", {})
+    system_view_layer = corrected_data.get("system_view_layer", {})
+    evaluation_layer = corrected_data.get("evaluation_layer", {})
+    
+    # 현재 시간
+    now = datetime.now()
+    
+    # 날짜 형식 변환 함수
+    def format_timestamp(date_value):
+        """날짜 문자열을 ISO 형식으로 변환"""
+        if not date_value:
+            return now.isoformat()
+        
+        if isinstance(date_value, str):
+            # PostgreSQL timestamp 형식 (예: "2025-10-23 08:50:14.242741+00")을 ISO로 변환
+            if ' ' in date_value and 'T' not in date_value:
+                # 공백이 있고 T가 없으면 PostgreSQL 형식으로 간주
+                try:
+                    # 공백을 T로 변환
+                    iso_string = date_value.replace(' ', 'T')
+                    
+                    # 시간대 형식 정리 (+00 -> +00:00, -00 -> -00:00)
+                    import re
+                    # 끝에 있는 +HH 또는 -HH 형식을 찾아서 +HH:00 또는 -HH:00로 변환
+                    tz_pattern = r'([+-])(\d{2})$'
+                    match = re.search(tz_pattern, iso_string)
+                    if match:
+                        sign = match.group(1)
+                        hours = match.group(2)
+                        iso_string = re.sub(tz_pattern, f'{sign}{hours}:00', iso_string)
+                    elif not ('+' in iso_string or '-' in iso_string[-6:] or iso_string.endswith('Z')):
+                        # 시간대가 없으면 UTC로 가정
+                        iso_string += '+00:00'
+                    
+                    # datetime.fromisoformat으로 파싱 (Python 3.7+)
+                    try:
+                        from datetime import datetime
+                        parsed_date = datetime.fromisoformat(iso_string.replace('Z', '+00:00'))
+                        return parsed_date.isoformat()
+                    except ValueError:
+                        # fromisoformat 실패 시 기본값 사용
+                        return now.isoformat()
+                except Exception as e:
+                    # 파싱 실패 시 기본값 사용
+                    return now.isoformat()
+            else:
+                # 이미 ISO 형식이면 그대로 사용 (파싱 시도)
+                try:
+                    from datetime import datetime
+                    # Z를 +00:00로 변환 후 파싱
+                    iso_value = date_value.replace('Z', '+00:00')
+                    parsed_date = datetime.fromisoformat(iso_value)
+                    return parsed_date.isoformat()
+                except (ValueError, AttributeError):
+                    return now.isoformat()
+        
+        return now.isoformat()
+    
+    # meta_layer에서 필드 추출
+    # meta_layer에 id가 있으면 제거 (테이블에서 자동 생성)
+    meta_layer_clean = {k: v for k, v in meta_layer.items() if k != 'id'}
+    
+    mapped_data = {
+        "idx": meta_layer_clean.get("idx"),
+        "lang": meta_layer_clean.get("lang", "kr"),
+        "category": meta_layer_clean.get("category", ""),
+        "topic": meta_layer_clean.get("topic", []),  # text[] 배열
+        "difficulty": meta_layer_clean.get("difficulty", "normal"),
+        "time_limit": meta_layer_clean.get("time_limit", ""),
+        "problem_type": meta_layer_clean.get("problem_type", ""),
+        "target_template_code": meta_layer_clean.get("target_template_code", ""),
+        "created_by": meta_layer_clean.get("created_by"),
+        "created_at": format_timestamp(meta_layer_clean.get("created_at")),
+        "updated_at": format_timestamp(meta_layer_clean.get("updated_at")),
+        "active": meta_layer_clean.get("active", True),
+        # JSONB 필드들
+        "user_view_layer": user_view_layer,
+        "system_view_layer": system_view_layer,
+        "evaluation_layer": evaluation_layer,
+    }
+    
+    return mapped_data
+
 def map_multiple_choice_to_qlearn_format(question: dict) -> dict:
     """객관식 문제를 qlearn_problems_multiple 형식으로 매핑"""
     
@@ -841,8 +1040,51 @@ def auto_process_all_questions(st, questions):
                     # 문제를 JSON으로 변환
                     question_json = json.dumps(current_question, ensure_ascii=False, indent=2)
                     
+                    # 디버깅: 교정 서비스 상태 확인
+                    st.write("🔍 **교정 서비스 상태 확인**")
+                    with st.expander("📊 교정 서비스 정보", expanded=True):
+                        st.write(f"**서비스 사용 가능**: {correction_service.is_available()}")
+                        st.write(f"**Gemini Client 존재**: {correction_service.gemini_client is not None}")
+                        
+                        # NEW_GENAI_AVAILABLE 확인
+                        try:
+                            from src.services.gemini_client import NEW_GENAI_AVAILABLE
+                            st.write(f"**NEW_GENAI_AVAILABLE**: {NEW_GENAI_AVAILABLE}")
+                            st.write(f"**correct_problem 메서드 존재**: {hasattr(correction_service.gemini_client, 'correct_problem') if correction_service.gemini_client else False}")
+                            
+                            if not NEW_GENAI_AVAILABLE:
+                                st.error("❌ `google-genai` 패키지가 설치되지 않았습니다!")
+                                st.info("💡 해결 방법: `pip install google-genai`를 실행하세요.")
+                            elif not hasattr(correction_service.gemini_client, 'correct_problem'):
+                                st.error("❌ `correct_problem` 메서드가 없습니다!")
+                            else:
+                                st.success("✅ 새로운 `correct_problem` 메서드를 사용할 수 있습니다.")
+                        except Exception as e:
+                            st.error(f"❌ 상태 확인 중 오류: {str(e)}")
+                    
                     # 교정 실행
+                    st.write("🚀 **교정 실행 중...**")
                     corrected_result = correction_service.correct_problem(question_json, question_type)
+                    
+                    # 디버깅: 어떤 메서드가 사용되었는지 확인
+                    st.write("📋 **교정 결과 요약**")
+                    with st.expander("🔍 교정 메서드 사용 확인", expanded=True):
+                        # 응답이 레이어 구조인지 확인
+                        import json as json_lib
+                        try:
+                            parsed = json_lib.loads(corrected_result) if isinstance(corrected_result, str) else corrected_result
+                            if isinstance(parsed, dict):
+                                has_layers = "meta_layer" in parsed and "user_view_layer" in parsed
+                                st.write(f"**레이어 구조 포함**: {'✅ 예' if has_layers else '❌ 아니오'}")
+                                if has_layers:
+                                    st.success("✅ `correct_problem` 메서드가 사용되었습니다 (레이어 구조)")
+                                else:
+                                    st.warning("⚠️ `review_content` 메서드가 사용되었습니다 (일반 형식)")
+                                    st.write("**응답 키**:", list(parsed.keys())[:10])
+                                    st.error("❌ **문제**: `google-genai` 패키지가 설치되지 않았거나 `correct_problem` 메서드가 호출되지 않았습니다.")
+                                    st.info("💡 **해결 방법**: `pip install google-genai`를 실행하세요.")
+                        except:
+                            st.warning("⚠️ 응답 파싱 실패 - 메서드 확인 불가")
                     
                     # 디버깅 정보를 세션 상태에 저장
                     debug_info = {
@@ -859,11 +1101,52 @@ def auto_process_all_questions(st, questions):
                         # 교정 실패 시 교정 결과를 UI에 표시
                         debug_info["status"] = "parsing_failed"
                         debug_info["corrected_data"] = None
+                        debug_info["parsing_error"] = "JSON 추출 실패"
                         corrected_data = current_question  # 교정 실패 시 원본 사용
+                        
+                        # 디버깅: JSON 파싱 실패 상세 정보
+                        st.error("❌ JSON 파싱 실패")
+                        with st.expander("🔍 JSON 파싱 실패 상세 정보", expanded=True):
+                            st.write("**AI 응답 원본 (처음 1000자):**")
+                            st.code(corrected_result[:1000] if corrected_result else "응답 없음")
+                            st.write("**AI 응답 전체 길이:**", len(corrected_result) if corrected_result else 0)
                     else:
                         # 교정 성공 시 결과를 UI에 표시
                         debug_info["status"] = "success"
                         debug_info["corrected_data"] = corrected_data
+                        
+                        # 디버깅: 교정된 데이터 구조 분석
+                        st.write("🔍 **교정 결과 분석**")
+                        with st.expander("📊 교정된 데이터 구조 분석", expanded=True):
+                            # 데이터 타입 확인
+                            st.write(f"**데이터 타입**: {type(corrected_data).__name__}")
+                            
+                            # 모든 키 확인
+                            if isinstance(corrected_data, dict):
+                                all_keys = list(corrected_data.keys())
+                                st.write(f"**전체 키 목록 ({len(all_keys)}개)**: {all_keys}")
+                                
+                                # 레이어 구조 확인
+                                required_layers = ["meta_layer", "user_view_layer", "system_view_layer", "evaluation_layer"]
+                                st.write("**레이어 구조 확인:**")
+                                for layer in required_layers:
+                                    if layer in corrected_data:
+                                        layer_data = corrected_data[layer]
+                                        layer_type = type(layer_data).__name__
+                                        if isinstance(layer_data, dict):
+                                            layer_keys = list(layer_data.keys())
+                                            st.write(f"  ✅ {layer}: {layer_type} (키: {len(layer_keys)}개) - {layer_keys[:10]}")
+                                        else:
+                                            st.write(f"  ✅ {layer}: {layer_type}")
+                                    else:
+                                        st.write(f"  ❌ {layer}: 없음")
+                                
+                                # 예상치 못한 키 확인
+                                unexpected_keys = [k for k in all_keys if k not in required_layers]
+                                if unexpected_keys:
+                                    st.write(f"**예상치 못한 키**: {unexpected_keys}")
+                            else:
+                                st.error(f"❌ 교정된 데이터가 딕셔너리가 아닙니다: {type(corrected_data)}")
                     
                     # 디버깅 정보를 세션 상태에 저장
                     if "correction_debug_info" not in st.session_state:
@@ -873,27 +1156,148 @@ def auto_process_all_questions(st, questions):
                     st.warning("⚠️ 교정 서비스 사용 불가 - 원본 데이터 사용")
                     corrected_data = current_question  # 교정 서비스 사용 불가 시 원본 사용
                 
-                # 2. 번역 후 저장 (문제 유형에 따라 다른 테이블에 저장)
+                # 2. 교정된 데이터를 structured_problems 테이블에 저장
                 save_success = False
-                target_table = ""
+                target_table = "structured_problems"
                 mapped_data = None
+                save_error = None
                 
-                if question_type == "multiple_choice":
-                    # 객관식 문제를 qlearn_problems_multiple 테이블에 저장
-                    mapped_data = map_multiple_choice_to_qlearn_format(corrected_data)
-                    save_success = st.session_state.db.save_qlearn_problem_multiple(mapped_data)
-                    target_table = "qlearn_problems_multiple"
+                # 교정된 데이터가 레이어 구조인지 확인
+                if "meta_layer" in corrected_data and "user_view_layer" in corrected_data:
+                    # 레이어 구조로 교정된 경우
+                    try:
+                        mapped_data = map_to_structured_problem_format(corrected_data)
+                        
+                        # 디버깅: 매핑된 데이터 확인
+                        st.write("🔍 **디버깅 정보**")
+                        with st.expander("📋 매핑된 데이터 미리보기", expanded=False):
+                            st.json(mapped_data)
+                        
+                        # 필수 필드 확인
+                        required_fields = ["lang", "category", "difficulty", "problem_type", "target_template_code"]
+                        missing_fields = [field for field in required_fields if not mapped_data.get(field)]
+                        if missing_fields:
+                            st.error(f"❌ 필수 필드 누락: {missing_fields}")
+                            save_error = f"필수 필드 누락: {missing_fields}"
+                        else:
+                            # 저장 시도
+                            try:
+                                st.write(f"💾 저장 시도 중... (Edge Function: {st.session_state.db.structured_problems_url})")
+                                save_success = st.session_state.db.save_structured_problem(mapped_data)
+                                if save_success:
+                                    st.success("✅ 저장 성공!")
+                                else:
+                                    st.error("❌ 저장 실패 (응답 없음)")
+                                    save_error = "저장 실패 (응답 없음)"
+                            except Exception as save_ex:
+                                st.error(f"❌ 저장 중 오류 발생: {str(save_ex)}")
+                                save_error = str(save_ex)
+                                save_success = False
+                    except Exception as map_ex:
+                        st.error(f"❌ 데이터 매핑 중 오류: {str(map_ex)}")
+                        save_error = f"매핑 오류: {str(map_ex)}"
+                        save_success = False
                 else:
-                    # 주관식 문제를 qlearn_problems 테이블에 저장
-                    mapped_data = map_question_to_qlearn_format(corrected_data)
-                    save_success = st.session_state.db.save_qlearn_problem(mapped_data)
-                    target_table = "qlearn_problems"
+                    # 교정 실패 또는 레이어 구조가 아닌 경우
+                    st.error("❌ **레이어 구조 검증 실패**")
+                    
+                    # 상세 분석
+                    with st.expander("🔍 레이어 구조 검증 상세 분석", expanded=True):
+                        # 데이터 타입 확인
+                        st.write(f"**교정된 데이터 타입**: {type(corrected_data).__name__}")
+                        
+                        if isinstance(corrected_data, dict):
+                            # 모든 키 확인
+                            all_keys = list(corrected_data.keys())
+                            st.write(f"**전체 키 목록 ({len(all_keys)}개)**:")
+                            for key in all_keys:
+                                value = corrected_data[key]
+                                value_type = type(value).__name__
+                                if isinstance(value, dict):
+                                    value_keys = list(value.keys())[:5]
+                                    st.write(f"  - `{key}`: {value_type} (키: {list(value.keys())[:10]})")
+                                elif isinstance(value, (list, str)):
+                                    preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
+                                    st.write(f"  - `{key}`: {value_type} (미리보기: {preview})")
+                                else:
+                                    st.write(f"  - `{key}`: {value_type} = {value}")
+                            
+                            # 레이어 구조 확인
+                            required_layers = {
+                                "meta_layer": "필수",
+                                "user_view_layer": "필수",
+                                "system_view_layer": "선택",
+                                "evaluation_layer": "선택"
+                            }
+                            
+                            st.write("**레이어 구조 검증 결과:**")
+                            missing_layers = []
+                            present_layers = []
+                            
+                            for layer, required in required_layers.items():
+                                if layer in corrected_data:
+                                    present_layers.append(layer)
+                                    layer_data = corrected_data[layer]
+                                    if isinstance(layer_data, dict):
+                                        layer_keys = list(layer_data.keys())
+                                        st.write(f"  ✅ {layer} ({required}): 있음 - 키 {len(layer_keys)}개")
+                                        if len(layer_keys) > 0:
+                                            st.write(f"     키 목록: {layer_keys[:15]}")
+                                    else:
+                                        st.write(f"  ⚠️ {layer} ({required}): 있음 (하지만 딕셔너리가 아님: {type(layer_data).__name__})")
+                                else:
+                                    missing_layers.append(layer)
+                                    st.write(f"  ❌ {layer} ({required}): 없음")
+                            
+                            # 원인 분석
+                            st.write("**원인 분석:**")
+                            if not present_layers:
+                                st.error("  - 교정된 데이터에 레이어가 전혀 없습니다.")
+                                st.write("  - 가능한 원인:")
+                                st.write("    1. AI가 레이어 구조로 교정하지 않았을 수 있습니다.")
+                                st.write("    2. JSON 파싱이 잘못되었을 수 있습니다.")
+                                st.write("    3. AI 응답 형식이 예상과 다를 수 있습니다.")
+                            elif len(present_layers) < 2:
+                                st.warning(f"  - 필수 레이어가 부족합니다. (현재: {present_layers}, 필요: meta_layer, user_view_layer)")
+                                st.write("  - 가능한 원인:")
+                                st.write("    1. AI가 일부 레이어만 생성했을 수 있습니다.")
+                                st.write("    2. JSON 파싱 중 일부 데이터가 손실되었을 수 있습니다.")
+                            else:
+                                st.info(f"  - 일부 레이어는 있지만 필수 레이어가 누락되었습니다.")
+                            
+                            # AI 응답 원본 확인
+                            st.write("**AI 응답 원본 확인:**")
+                            if "ai_response" in debug_info:
+                                ai_response = debug_info.get("ai_response", "")
+                                st.code(ai_response[:2000] + "..." if len(ai_response) > 2000 else ai_response)
+                            
+                            # 교정된 데이터 전체 확인
+                            st.write("**교정된 데이터 전체:**")
+                            st.json(corrected_data)
+                        else:
+                            st.error(f"❌ 교정된 데이터가 딕셔너리가 아닙니다: {type(corrected_data)}")
+                            st.write(f"**데이터 값**: {str(corrected_data)[:500]}")
+                    
+                    # 요약
+                    if isinstance(corrected_data, dict):
+                        missing_layers = []
+                        if "meta_layer" not in corrected_data:
+                            missing_layers.append("meta_layer")
+                        if "user_view_layer" not in corrected_data:
+                            missing_layers.append("user_view_layer")
+                        st.warning(f"⚠️ 교정된 데이터가 레이어 구조가 아닙니다. 누락된 레이어: {missing_layers}")
+                        save_error = f"레이어 구조 불일치: 누락된 레이어 {missing_layers}"
+                    else:
+                        st.error(f"⚠️ 교정된 데이터가 딕셔너리가 아닙니다: {type(corrected_data)}")
+                        save_error = f"데이터 타입 오류: {type(corrected_data)}"
+                    save_success = False
                 
                 # 저장 정보를 디버깅 정보에 추가
                 if "correction_debug_info" in st.session_state and st.session_state.correction_debug_info:
                     latest_debug = st.session_state.correction_debug_info[-1]
                     latest_debug["mapped_data"] = mapped_data
                     latest_debug["save_success"] = save_success
+                    latest_debug["save_error"] = save_error
                     latest_debug["target_table"] = target_table
                 
                 if save_success:
