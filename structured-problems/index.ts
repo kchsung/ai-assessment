@@ -1,5 +1,5 @@
 // Edge Function: structured-problems/index.ts
-// structured_problems 테이블 전용 Edge Function
+// next_qlearn_problems 테이블 전용 Edge Function
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -82,7 +82,7 @@ serve(async (req) => {
   }
 });
 
-// structured_problems 테이블에 문제 저장
+// next_qlearn_problems 테이블에 문제 저장
 async function saveStructuredProblem(supabaseClient, params) {
   try {
     console.log('Saving structured_problem (ID will be auto-generated)');
@@ -172,6 +172,16 @@ async function saveStructuredProblem(supabaseClient, params) {
       topicValue = null;
     }
 
+    // training_focus 배열 처리 (빈 배열이면 null로 변환)
+    let trainingFocusValue = params.training_focus;
+    if (Array.isArray(trainingFocusValue)) {
+      if (trainingFocusValue.length === 0) {
+        trainingFocusValue = null;
+      }
+    } else if (!trainingFocusValue) {
+      trainingFocusValue = null;
+    }
+
     const problemData = {
       // idx는 자동 증가 컬럼이므로 제외
       lang: params.lang,
@@ -180,6 +190,7 @@ async function saveStructuredProblem(supabaseClient, params) {
       difficulty: params.difficulty,
       time_limit: cleanValue(params.time_limit),
       target_template_code: params.target_template_code,
+      training_focus: trainingFocusValue,  // text[] 배열 (빈 배열이면 null)
       created_by: cleanValue(params.created_by),
       created_at: formatTimestamp(params.created_at),
       updated_at: formatTimestamp(params.updated_at),
@@ -223,7 +234,7 @@ async function saveStructuredProblem(supabaseClient, params) {
     
     console.log('🔧 [saveStructuredProblem] Supabase 삽입 시작...');
     const { data, error } = await supabaseClient
-      .from('structured_problems')
+      .from('next_qlearn_problems')
       .insert(problemData)
       .select();
 
@@ -265,12 +276,12 @@ async function saveStructuredProblem(supabaseClient, params) {
   }
 }
 
-// structured_problems 테이블에서 문제 조회
+// next_qlearn_problems 테이블에서 문제 조회
 async function getStructuredProblems(supabaseClient, filters = {}) {
   try {
-    console.log('Getting structured_problems with filters:', filters);
+    console.log('Getting next_qlearn_problems with filters:', filters);
     
-    let query = supabaseClient.from('structured_problems').select('*');
+    let query = supabaseClient.from('next_qlearn_problems').select('*');
     
     // 필터 적용
     if (filters.id) query = query.eq('id', filters.id);
@@ -300,6 +311,7 @@ async function getStructuredProblems(supabaseClient, filters = {}) {
         difficulty: r.difficulty,
         time_limit: r.time_limit,
         target_template_code: r.target_template_code,
+        training_focus: r.training_focus,
         created_by: r.created_by,
         created_at: r.created_at,
         updated_at: r.updated_at,
@@ -334,7 +346,7 @@ async function getStructuredProblems(supabaseClient, filters = {}) {
   }
 }
 
-// structured_problems 테이블의 문제 업데이트
+// next_qlearn_problems 테이블의 문제 업데이트
 async function updateStructuredProblem(supabaseClient, params) {
   try {
     const { problem_id, updates } = params;
@@ -356,7 +368,7 @@ async function updateStructuredProblem(supabaseClient, params) {
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await supabaseClient
-      .from('structured_problems')
+      .from('next_qlearn_problems')
       .update(updateData)
       .eq('id', problem_id)
       .select();

@@ -28,7 +28,7 @@ def update_selection(question_index):
 
 def render(st):
     st.header("🤖 자동 문제 교정")
-    st.caption("questions_multiple_choice/questions_subjective 테이블의 문제를 교정하여 structured_problems 테이블에 저장합니다.")
+    st.caption("questions_multiple_choice/questions_subjective 테이블의 문제를 교정하여 next_qlearn_problems 테이블에 저장합니다.")
     
     # DB 연결 체크
     if st.session_state.db is None:
@@ -888,7 +888,7 @@ def map_question_to_qlearn_format(question: dict) -> dict:
     return mapped_data
 
 def map_to_structured_problem_format(corrected_data: dict) -> dict:
-    """교정된 데이터를 structured_problems 테이블 형식으로 매핑"""
+    """교정된 데이터를 next_qlearn_problems 테이블 형식으로 매핑"""
     
     # 교정된 데이터는 4개 레이어 구조로 반환됨
     meta_layer = corrected_data.get("meta_layer", {})
@@ -962,6 +962,7 @@ def map_to_structured_problem_format(corrected_data: dict) -> dict:
         "difficulty": meta_layer_clean.get("difficulty", "normal"),
         "time_limit": meta_layer_clean.get("time_limit", ""),
         "target_template_code": meta_layer_clean.get("target_template_code", ""),
+        "training_focus": meta_layer_clean.get("training_focus", []),  # text[] 배열
         "created_by": meta_layer_clean.get("created_by"),
         "created_at": format_timestamp(meta_layer_clean.get("created_at")),
         "updated_at": format_timestamp(meta_layer_clean.get("updated_at")),
@@ -1191,9 +1192,9 @@ def auto_process_all_questions(st, questions):
                     st.warning("⚠️ 교정 서비스 사용 불가 - 원본 데이터 사용")
                     corrected_data = current_question  # 교정 서비스 사용 불가 시 원본 사용
                 
-                # 2. 교정된 데이터를 structured_problems 테이블에 저장
+                # 2. 교정된 데이터를 next_qlearn_problems 테이블에 저장
                 save_success = False
-                target_table = "structured_problems"
+                target_table = "next_qlearn_problems"
                 mapped_data = None
                 save_error = None
                 

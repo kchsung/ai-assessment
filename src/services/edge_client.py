@@ -6,7 +6,7 @@ class EdgeDBClient:
         self.base_url = base_url or os.getenv("EDGE_FUNCTION_URL")
         self.token = token or os.getenv("EDGE_SHARED_TOKEN")
         self.supabase_anon = supabase_anon or os.getenv("SUPABASE_ANON_KEY")
-        # structured_problems 전용 Edge Function URL
+        # next_qlearn_problems 전용 Edge Function URL
         self.structured_problems_url = os.getenv("STRUCTURED_PROBLEMS_EDGE_FUNCTION_URL") or \
                                       (self.base_url.replace("/ai-bank", "/structured-problems") if self.base_url else None)
         if not self.base_url:
@@ -336,9 +336,9 @@ class EdgeDBClient:
         self._call("update_qlearn_problem_multiple", {"problem_id": problem_id, "updates": updates})
         return True
     
-    # structured_problems 테이블 관련 메서드들 (별도 Edge Function 사용)
+    # next_qlearn_problems 테이블 관련 메서드들 (별도 Edge Function 사용)
     def _call_structured_problems(self, action: str, params: dict | None = None, timeout: int = 30, max_retries: int = 3):
-        """structured_problems 전용 Edge Function 호출"""
+        """next_qlearn_problems 전용 Edge Function 호출"""
         import streamlit as st
         
         if not self.structured_problems_url:
@@ -433,7 +433,7 @@ class EdgeDBClient:
                 raise RuntimeError(error_msg)
     
     def save_structured_problem(self, problem: dict) -> bool:
-        """structured_problems 테이블에 문제 저장"""
+        """next_qlearn_problems 테이블에 문제 저장"""
         import json
         import streamlit as st
         
@@ -479,13 +479,13 @@ class EdgeDBClient:
             raise RuntimeError(error_msg)
     
     def get_structured_problems(self, filters: dict | None = None):
-        """structured_problems 테이블에서 문제 조회"""
+        """next_qlearn_problems 테이블에서 문제 조회"""
         result = self._call_structured_problems("get_structured_problems", filters or {})
         if isinstance(result, dict) and result.get("ok") and "data" in result:
             return result["data"]
         return []
     
     def update_structured_problem(self, problem_id: str, updates: dict) -> bool:
-        """structured_problems 테이블의 문제 업데이트"""
+        """next_qlearn_problems 테이블의 문제 업데이트"""
         self._call_structured_problems("update_structured_problem", {"problem_id": problem_id, "updates": updates})
         return True

@@ -303,7 +303,7 @@ class GeminiClient:
                 properties={
                     "meta_layer": types.Schema(
                         type=types.Type.OBJECT,
-                        required=["id", "category", "difficulty", "target_template_code", "time_limit"],
+                        required=["id", "category", "difficulty", "target_template_code", "time_limit", "training_focus"],
                         properties={
                             "id": types.Schema(
                                 type=types.Type.STRING,
@@ -325,6 +325,13 @@ class GeminiClient:
                             ),
                             "time_limit": types.Schema(
                                 type=types.Type.STRING,
+                            ),
+                            "training_focus": types.Schema(
+                                type=types.Type.ARRAY,
+                                description="이 문제를 통해 훈련하고자 하는 핵심 역량 코드 목록 (예: [\"Data_Literacy\", \"Problem_Structuring\"])",
+                                items=types.Schema(
+                                    type=types.Type.STRING,
+                                ),
                             ),
                         },
                     ),
